@@ -29,6 +29,12 @@ importers:
 
   packages/domain: {}
 
+  packages/github:
+    dependencies:
+      '@contribos/domain':
+        specifier: workspace:*
+        version: link:../domain
+
   packages/state-engine:
     dependencies:
       '@contribos/domain':
