@@ -134,3 +134,24 @@ it("rejects a webhook with a missing repository ID", async () => {
     reasonCode: "MISSING_REPOSITORY_ID"
   });
 });
+
+it("rejects an unsupported GitHub webhook event", async () => {
+  const store = new InMemoryWebhookDeliveryStore();
+
+  const envelope: GitHubWebhookEnvelope = {
+    deliveryId: "delivery-123",
+    eventName: "issues",
+    installationId: 1001,
+    repositoryId: 2002,
+    receivedAt: new Date("2026-08-25T00:00:00.000Z"),
+    payload: {}
+  };
+
+  const result = await processWebhook(envelope, store);
+
+  expect(result).toEqual({
+    status: "REJECTED",
+    deliveryId: "delivery-123",
+    reasonCode: "UNSUPPORTED_EVENT"
+  });
+});

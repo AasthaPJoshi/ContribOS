@@ -1,3 +1,5 @@
+import { isSupportedGitHubWebhookEvent } from "./supported-webhook-events.js";
+
 import type { GitHubWebhookEnvelope } from "./webhook-envelope.js";
 import type { WebhookDeliveryStore } from "./webhook-delivery-store.js";
 import type { WebhookProcessingResult } from "./webhook-processing-result.js";
@@ -19,6 +21,14 @@ export async function processWebhook(
       status: "REJECTED",
       deliveryId: envelope.deliveryId,
       reasonCode: "MISSING_EVENT_NAME"
+    };
+  }
+
+  if (!isSupportedGitHubWebhookEvent(envelope.eventName)) {
+    return {
+      status: "REJECTED",
+      deliveryId: envelope.deliveryId,
+      reasonCode: "UNSUPPORTED_EVENT"
     };
   }
 
