@@ -2,3 +2,5 @@ export * from "./pull-request-record.js";
 export * from "./evidence.js";
 export * from "./webhook-envelope.js";
 export * from "./verify-webhook-signature.js";
+export * from "./webhook-delivery-store.js";
+export * from "./in-memory-webhook-delivery-store.js";
