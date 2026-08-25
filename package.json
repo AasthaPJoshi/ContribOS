@@ -11,7 +11,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "verify": "pnpm test && pnpm typecheck && pnpm build"
   },
   "devDependencies": {
     "@types/node": "^26.3.0",

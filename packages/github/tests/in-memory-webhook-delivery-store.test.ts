@@ -21,4 +21,11 @@ describe("InMemoryWebhookDeliveryStore", () => {
     expect(await store.hasProcessed("delivery-123")).toBe(true);
     expect(await store.hasProcessed("delivery-456")).toBe(false);
   });
+
+  it("atomically claims a delivery only once", async () => {
+    const store = new InMemoryWebhookDeliveryStore();
+
+    expect(await store.tryClaim("delivery-123")).toBe(true);
+    expect(await store.tryClaim("delivery-123")).toBe(false);
+  });
 });

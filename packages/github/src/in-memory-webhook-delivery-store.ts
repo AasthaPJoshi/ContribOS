@@ -10,4 +10,13 @@ export class InMemoryWebhookDeliveryStore implements WebhookDeliveryStore {
   async markProcessed(deliveryId: string): Promise<void> {
     this.processed.add(deliveryId);
   }
+
+  async tryClaim(deliveryId: string): Promise<boolean> {
+    if (this.processed.has(deliveryId)) {
+      return false;
+    }
+
+    this.processed.add(deliveryId);
+    return true;
+  }
 }

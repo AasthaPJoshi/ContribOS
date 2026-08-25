@@ -1,5 +1,6 @@
 import { isSupportedGitHubWebhookAction } from "./supported-webhook-actions.js";
 import { isSupportedGitHubWebhookEvent } from "./supported-webhook-events.js";
+import { getGitHubWebhookAction } from "./webhook-payload.js";
 
 import type { GitHubWebhookEnvelope } from "./webhook-envelope.js";
 import type { WebhookDeliveryStore } from "./webhook-delivery-store.js";
@@ -33,15 +34,9 @@ export async function processWebhook(
     };
   }
 
-  const action =
-    typeof envelope.payload === "object" &&
-    envelope.payload !== null &&
-    "action" in envelope.payload &&
-    typeof envelope.payload.action === "string"
-      ? envelope.payload.action
-      : "";
+  const action = getGitHubWebhookAction(envelope.payload);
 
-  if (!action.trim()) {
+  if (!action) {
     return {
       status: "REJECTED",
       deliveryId: envelope.deliveryId,
@@ -73,15 +68,15 @@ export async function processWebhook(
     };
   }
 
-  if (await deliveryStore.hasProcessed(envelope.deliveryId)) {
+  const claimed = await deliveryStore.tryClaim(envelope.deliveryId);
+
+  if (!claimed) {
     return {
       status: "DUPLICATE",
       deliveryId: envelope.deliveryId,
       reasonCode: "DELIVERY_ALREADY_PROCESSED"
     };
   }
-
-  await deliveryStore.markProcessed(envelope.deliveryId);
 
   return {
     status: "ACCEPTED",
