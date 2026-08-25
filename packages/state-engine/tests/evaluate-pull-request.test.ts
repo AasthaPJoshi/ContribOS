@@ -322,3 +322,32 @@ it("falls back to ambiguous when no deterministic rule matches", () => {
   expect(result.readiness).toBe("AMBIGUOUS");
   expect(result.reasonCode).toBe("NO_MATCHING_RULE");
 });
+
+it("preserves evidence on the resulting state evaluation", () => {
+  const occurredAt = new Date("2026-08-25T00:00:00.000Z");
+
+  const evidence = [
+    {
+      id: "github:pull-request:pr_456",
+      source: "GITHUB" as const,
+      objectType: "PULL_REQUEST" as const,
+      externalId: "pr_456",
+      url: "https://github.com/example/repo/pull/42",
+      occurredAt
+    }
+  ];
+
+  const result = evaluatePullRequest({
+    evidence,
+    isDraft: false,
+    isOpen: true,
+    isMerged: false,
+    hasMergeConflict: false,
+    checkStatus: "SUCCESS",
+    reviewDecision: "APPROVED",
+    authorHasChangesToMake: false,
+    maintainerReviewRequired: false
+  });
+
+  expect(result.evidence).toEqual(evidence);
+});
