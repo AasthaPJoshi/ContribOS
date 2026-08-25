@@ -92,3 +92,45 @@ it("rejects a webhook with a missing event name", async () => {
     reasonCode: "MISSING_EVENT_NAME"
   });
 });
+
+it("rejects a webhook with a missing installation ID", async () => {
+  const store = new InMemoryWebhookDeliveryStore();
+
+  const envelope: GitHubWebhookEnvelope = {
+    deliveryId: "delivery-123",
+    eventName: "pull_request",
+    installationId: null,
+    repositoryId: 2002,
+    receivedAt: new Date("2026-08-25T00:00:00.000Z"),
+    payload: {}
+  };
+
+  const result = await processWebhook(envelope, store);
+
+  expect(result).toEqual({
+    status: "REJECTED",
+    deliveryId: "delivery-123",
+    reasonCode: "MISSING_INSTALLATION_ID"
+  });
+});
+
+it("rejects a webhook with a missing repository ID", async () => {
+  const store = new InMemoryWebhookDeliveryStore();
+
+  const envelope: GitHubWebhookEnvelope = {
+    deliveryId: "delivery-123",
+    eventName: "pull_request",
+    installationId: 1001,
+    repositoryId: null,
+    receivedAt: new Date("2026-08-25T00:00:00.000Z"),
+    payload: {}
+  };
+
+  const result = await processWebhook(envelope, store);
+
+  expect(result).toEqual({
+    status: "REJECTED",
+    deliveryId: "delivery-123",
+    reasonCode: "MISSING_REPOSITORY_ID"
+  });
+});

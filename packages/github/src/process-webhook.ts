@@ -22,6 +22,22 @@ export async function processWebhook(
     };
   }
 
+  if (envelope.installationId === null) {
+    return {
+      status: "REJECTED",
+      deliveryId: envelope.deliveryId,
+      reasonCode: "MISSING_INSTALLATION_ID"
+    };
+  }
+
+  if (envelope.repositoryId === null) {
+    return {
+      status: "REJECTED",
+      deliveryId: envelope.deliveryId,
+      reasonCode: "MISSING_REPOSITORY_ID"
+    };
+  }
+
   if (await deliveryStore.hasProcessed(envelope.deliveryId)) {
     return {
       status: "DUPLICATE",
