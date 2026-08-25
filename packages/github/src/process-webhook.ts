@@ -1,3 +1,4 @@
+import { isSupportedGitHubWebhookAction } from "./supported-webhook-actions.js";
 import { isSupportedGitHubWebhookEvent } from "./supported-webhook-events.js";
 
 import type { GitHubWebhookEnvelope } from "./webhook-envelope.js";
@@ -29,6 +30,30 @@ export async function processWebhook(
       status: "REJECTED",
       deliveryId: envelope.deliveryId,
       reasonCode: "UNSUPPORTED_EVENT"
+    };
+  }
+
+  const action =
+    typeof envelope.payload === "object" &&
+    envelope.payload !== null &&
+    "action" in envelope.payload &&
+    typeof envelope.payload.action === "string"
+      ? envelope.payload.action
+      : "";
+
+  if (!action.trim()) {
+    return {
+      status: "REJECTED",
+      deliveryId: envelope.deliveryId,
+      reasonCode: "MISSING_EVENT_ACTION"
+    };
+  }
+
+  if (!isSupportedGitHubWebhookAction(envelope.eventName, action)) {
+    return {
+      status: "REJECTED",
+      deliveryId: envelope.deliveryId,
+      reasonCode: "UNSUPPORTED_EVENT_ACTION"
     };
   }
 

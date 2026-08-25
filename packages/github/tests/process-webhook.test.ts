@@ -16,7 +16,9 @@ describe("processWebhook", () => {
       installationId: 1001,
       repositoryId: 2002,
       receivedAt: new Date("2026-08-25T00:00:00.000Z"),
-      payload: {}
+      payload: {
+        action: "opened"
+      }
     };
 
     const result = await processWebhook(envelope, store);
@@ -37,7 +39,9 @@ describe("processWebhook", () => {
       installationId: 1001,
       repositoryId: 2002,
       receivedAt: new Date("2026-08-25T00:00:00.000Z"),
-      payload: {}
+      payload: {
+        action: "opened"
+      }
     };
 
     await processWebhook(envelope, store);
@@ -102,7 +106,9 @@ it("rejects a webhook with a missing installation ID", async () => {
     installationId: null,
     repositoryId: 2002,
     receivedAt: new Date("2026-08-25T00:00:00.000Z"),
-    payload: {}
+    payload: {
+      action: "opened"
+    }
   };
 
   const result = await processWebhook(envelope, store);
@@ -123,7 +129,9 @@ it("rejects a webhook with a missing repository ID", async () => {
     installationId: 1001,
     repositoryId: null,
     receivedAt: new Date("2026-08-25T00:00:00.000Z"),
-    payload: {}
+    payload: {
+      action: "opened"
+    }
   };
 
   const result = await processWebhook(envelope, store);
@@ -153,5 +161,49 @@ it("rejects an unsupported GitHub webhook event", async () => {
     status: "REJECTED",
     deliveryId: "delivery-123",
     reasonCode: "UNSUPPORTED_EVENT"
+  });
+});
+
+it("rejects a webhook with a missing event action", async () => {
+  const store = new InMemoryWebhookDeliveryStore();
+
+  const envelope: GitHubWebhookEnvelope = {
+    deliveryId: "delivery-123",
+    eventName: "pull_request",
+    installationId: 1001,
+    repositoryId: 2002,
+    receivedAt: new Date("2026-08-25T00:00:00.000Z"),
+    payload: {}
+  };
+
+  const result = await processWebhook(envelope, store);
+
+  expect(result).toEqual({
+    status: "REJECTED",
+    deliveryId: "delivery-123",
+    reasonCode: "MISSING_EVENT_ACTION"
+  });
+});
+
+it("rejects an unsupported webhook action", async () => {
+  const store = new InMemoryWebhookDeliveryStore();
+
+  const envelope: GitHubWebhookEnvelope = {
+    deliveryId: "delivery-123",
+    eventName: "pull_request",
+    installationId: 1001,
+    repositoryId: 2002,
+    receivedAt: new Date("2026-08-25T00:00:00.000Z"),
+    payload: {
+      action: "labeled"
+    }
+  };
+
+  const result = await processWebhook(envelope, store);
+
+  expect(result).toEqual({
+    status: "REJECTED",
+    deliveryId: "delivery-123",
+    reasonCode: "UNSUPPORTED_EVENT_ACTION"
   });
 });
