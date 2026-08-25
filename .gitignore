@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+.turbo/
+coverage/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Secrets
+*.pem
+*.key
+*.p12
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Testing
+playwright-report/
+test-results/
