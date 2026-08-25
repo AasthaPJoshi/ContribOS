@@ -10,7 +10,11 @@ export type ReviewDecision =
   | "REVIEW_REQUIRED"
   | "UNKNOWN";
 
+import type { EvidenceRef } from "./evidence.js";
+
 export interface PullRequestSnapshot {
+  evidence: EvidenceRef[];
+
   isDraft: boolean;
   isOpen: boolean;
   isMerged: boolean;

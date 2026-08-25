@@ -4,6 +4,8 @@ import type {
   ReviewDecision
 } from "@contribos/domain";
 
+import { createPullRequestEvidence } from "./evidence.js";
+
 export interface GitHubPullRequestRecord {
   repositoryId: string;
   pullRequestNumber: number;
@@ -27,6 +29,9 @@ export function toPullRequestSnapshot(
   record: GitHubPullRequestRecord
 ): PullRequestSnapshot {
   return {
+    evidence: [
+      createPullRequestEvidence(record, new Date())
+    ],
     isDraft: record.isDraft,
     isOpen: record.isOpen,
     isMerged: record.isMerged,

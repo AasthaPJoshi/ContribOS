@@ -13,7 +13,7 @@ export function evaluatePullRequest(
       readiness: "READY_FOR_RELEASE",
       reasonCode: "PR_MERGED",
       explanation: "The pull request has been merged.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -26,7 +26,7 @@ export function evaluatePullRequest(
       readiness: "COMPLETE",
       reasonCode: "PR_CLOSED",
       explanation: "The pull request was closed without being merged.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -39,7 +39,7 @@ export function evaluatePullRequest(
       readiness: "NOT_READY",
       reasonCode: "PR_DRAFT",
       explanation: "The pull request is still marked as a draft.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -52,7 +52,7 @@ export function evaluatePullRequest(
       readiness: "NOT_READY",
       reasonCode: "CI_FAILED",
       explanation: "Required checks are failing on the current pull request state.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -65,7 +65,7 @@ export function evaluatePullRequest(
       readiness: "NOT_READY",
       reasonCode: "CI_PENDING",
       explanation: "Required checks are still running.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -78,7 +78,7 @@ export function evaluatePullRequest(
       readiness: "AMBIGUOUS",
       reasonCode: "CI_STATUS_UNKNOWN",
       explanation: "Required check status is unavailable, so the next action cannot be determined safely.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -91,7 +91,7 @@ export function evaluatePullRequest(
       readiness: "AMBIGUOUS",
       reasonCode: "REVIEW_STATUS_UNKNOWN",
       explanation: "Review status is unavailable, so the next action cannot be determined safely.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -107,7 +107,7 @@ export function evaluatePullRequest(
       readiness: "NOT_READY",
       reasonCode: "CHANGES_REQUESTED",
       explanation: "Reviewer-requested changes are still outstanding.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -123,7 +123,7 @@ export function evaluatePullRequest(
       readiness: "AMBIGUOUS",
       reasonCode: "INCONSISTENT_CHANGE_REQUEST_STATE",
       explanation: "Changes were requested, but no outstanding author changes are recorded.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -136,7 +136,7 @@ export function evaluatePullRequest(
       readiness: "NOT_READY",
       reasonCode: "MERGE_CONFLICT",
       explanation: "The pull request has a merge conflict that must be resolved.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -154,7 +154,7 @@ export function evaluatePullRequest(
       readiness: "READY_FOR_REVIEW",
       reasonCode: "MAINTAINER_REVIEW_REQUIRED",
       explanation: "The pull request is ready and requires maintainer review.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -170,7 +170,7 @@ export function evaluatePullRequest(
       readiness: "AMBIGUOUS",
       reasonCode: "INCONSISTENT_REVIEW_STATE",
       explanation: "The pull request is approved but still marked as requiring maintainer review.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -189,7 +189,7 @@ export function evaluatePullRequest(
       readiness: "READY_TO_MERGE",
       reasonCode: "READY_TO_MERGE",
       explanation: "The pull request is approved, checks are successful, and it is ready to merge.",
-      evidence: [],
+      evidence: snapshot.evidence,
       evaluatedAt: new Date(),
       engineVersion: "0.1.0"
     };
@@ -201,7 +201,7 @@ export function evaluatePullRequest(
     readiness: "AMBIGUOUS",
     reasonCode: "NO_MATCHING_RULE",
     explanation: "No deterministic rule matched the current pull request snapshot.",
-    evidence: [],
+    evidence: snapshot.evidence,
     evaluatedAt: new Date(),
     engineVersion: "0.1.0"
   };

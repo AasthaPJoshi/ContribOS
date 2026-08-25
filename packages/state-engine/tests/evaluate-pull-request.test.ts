@@ -4,6 +4,7 @@ import { evaluatePullRequest } from "../src/evaluate-pull-request.js";
 describe("evaluatePullRequest", () => {
   it("marks a merged pull request as ready for release", () => {
     const result = evaluatePullRequest({
+    evidence: [],
       isDraft: false,
       isOpen: false,
       isMerged: true,
@@ -23,6 +24,7 @@ describe("evaluatePullRequest", () => {
 
 it("assigns the next action to the author when CI fails", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -41,6 +43,7 @@ it("assigns the next action to the author when CI fails", () => {
 
 it("assigns the next action to the author when changes are requested", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -59,6 +62,7 @@ it("assigns the next action to the author when changes are requested", () => {
 
 it("assigns the next action to the maintainer when the PR is ready for review", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -77,6 +81,7 @@ it("assigns the next action to the maintainer when the PR is ready for review", 
 
 it("marks an approved green PR as ready to merge", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -95,6 +100,7 @@ it("marks an approved green PR as ready to merge", () => {
 
 it("assigns the next action to the author when the PR has a merge conflict", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -113,6 +119,7 @@ it("assigns the next action to the author when the PR has a merge conflict", () 
 
 it("waits on CI when required checks are still pending", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -131,6 +138,7 @@ it("waits on CI when required checks are still pending", () => {
 
 it("assigns the next action to the author when the PR is still a draft", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: true,
     isOpen: true,
     isMerged: false,
@@ -149,6 +157,7 @@ it("assigns the next action to the author when the PR is still a draft", () => {
 
 it("marks a closed unmerged PR as complete with no next actor", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: false,
     isMerged: false,
@@ -167,6 +176,7 @@ it("marks a closed unmerged PR as complete with no next actor", () => {
 
 it("returns ambiguous when CI status is unknown", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -185,6 +195,7 @@ it("returns ambiguous when CI status is unknown", () => {
 
 it("returns ambiguous when review status is unknown", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -203,6 +214,7 @@ it("returns ambiguous when review status is unknown", () => {
 
 it("does not classify an approved PR as still requiring review", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -218,6 +230,7 @@ it("does not classify an approved PR as still requiring review", () => {
 
 it("does not mark an approved green PR as ready to merge when it has a merge conflict", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -236,6 +249,7 @@ it("does not mark an approved green PR as ready to merge when it has a merge con
 
 it("marks a green PR with required review as ready for maintainer review", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -254,6 +268,7 @@ it("marks a green PR with required review as ready for maintainer review", () =>
 
 it("returns ambiguous when an approved PR is still marked as requiring maintainer review", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -272,6 +287,7 @@ it("returns ambiguous when an approved PR is still marked as requiring maintaine
 
 it("returns ambiguous when changes are requested but no author changes are recorded", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,
@@ -290,6 +306,7 @@ it("returns ambiguous when changes are requested but no author changes are recor
 
 it("falls back to ambiguous when no deterministic rule matches", () => {
   const result = evaluatePullRequest({
+    evidence: [],
     isDraft: false,
     isOpen: true,
     isMerged: false,

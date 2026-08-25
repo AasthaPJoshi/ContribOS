@@ -28,7 +28,16 @@ describe("toPullRequestSnapshot", () => {
 
     const snapshot = toPullRequestSnapshot(record);
 
-    expect(snapshot).toEqual({
+    expect(snapshot.evidence).toHaveLength(1);
+    expect(snapshot.evidence[0]).toMatchObject({
+      id: "github:pull-request:pr_456",
+      source: "GITHUB",
+      objectType: "PULL_REQUEST",
+      externalId: "pr_456",
+      url: "https://github.com/example/repo/pull/42"
+    });
+
+    expect(snapshot).toMatchObject({
       isDraft: false,
       isOpen: true,
       isMerged: false,
