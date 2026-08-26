@@ -18,3 +18,8 @@ export * from "./github-app-auth.js";
 export * from "./github-api-client.js";
 export * from "./github-permissions.js";
 export * from "./github-repository-scope.js";
+export * from "./reconciliation-types.js";
+export * from "./reconcile-pull-request.js";
+export * from "./reconciliation-policy.js";
+export * from "./reconciliation-drift.js";
+export * from "./reconciliation-retry.js";
