@@ -13,3 +13,8 @@ export * from "./webhook-payload.js";
 export * from "./normalized-webhook-event.js";
 export * from "./normalize-webhook-event.js";
 export * from "./webhook-evidence.js";
+export * from "./github-http.js";
+export * from "./github-app-auth.js";
+export * from "./github-api-client.js";
+export * from "./github-permissions.js";
+export * from "./github-repository-scope.js";
