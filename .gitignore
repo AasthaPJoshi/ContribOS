@@ -26,3 +26,6 @@ coverage/
 # Testing
 playwright-report/
 test-results/
+
+# Local secrets
+.secrets/
