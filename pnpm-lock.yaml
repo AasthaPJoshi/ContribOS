@@ -27,6 +27,24 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@26.3.0)(vite@8.2.2(@types/node@26.3.0)(esbuild@0.28.2)(tsx@4.23.12))
 
+  apps/control-plane:
+    dependencies:
+      '@contribos/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@contribos/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@contribos/github':
+        specifier: workspace:*
+        version: link:../../packages/github
+      '@contribos/state-engine':
+        specifier: workspace:*
+        version: link:../../packages/state-engine
+      '@contribos/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
+
   packages/db:
     dependencies:
       '@contribos/domain':

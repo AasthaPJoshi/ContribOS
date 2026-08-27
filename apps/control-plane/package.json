@@ -1,0 +1,28 @@
+{
+  "name": "@contribos/control-plane",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "pnpm run clean && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/service-entrypoint.js"
+  },
+  "dependencies": {
+    "@contribos/github": "workspace:*",
+    "@contribos/worker": "workspace:*",
+    "@contribos/db": "workspace:*",
+    "@contribos/state-engine": "workspace:*",
+    "@contribos/domain": "workspace:*"
+  }
+}

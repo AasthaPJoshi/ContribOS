@@ -55,7 +55,7 @@ describe("worker_jobs migration", () => {
     }
   });
 
-  it("enforces job deduplication keys", async () => {
+  it("blocks duplicate active jobs", async () => {
     const pg = await setup();
 
     try {
@@ -72,7 +72,7 @@ describe("worker_jobs migration", () => {
           $1,
           'RECONCILE_PULL_REQUEST',
           '{}'::jsonb,
-          'dedupe-1',
+          'dedupe-active',
           5,
           NOW()
         );
@@ -87,6 +87,118 @@ describe("worker_jobs migration", () => {
           "22222222-2222-4222-8222-222222222222"
         ])
       ).rejects.toThrow();
+    } finally {
+      await pg.close();
+    }
+  });
+
+  it("allows the same deduplication key after completion", async () => {
+    const pg = await setup();
+
+    try {
+      await pg.query(`
+        INSERT INTO worker_jobs (
+          id,
+          type,
+          payload,
+          deduplication_key,
+          max_attempts,
+          available_at,
+          status
+        )
+        VALUES (
+          '33333333-3333-4333-8333-333333333333',
+          'RECONCILE_PULL_REQUEST',
+          '{}'::jsonb,
+          'dedupe-completed',
+          5,
+          NOW(),
+          'COMPLETED'
+        );
+      `);
+
+      await pg.query(`
+        INSERT INTO worker_jobs (
+          id,
+          type,
+          payload,
+          deduplication_key,
+          max_attempts,
+          available_at
+        )
+        VALUES (
+          '44444444-4444-4444-8444-444444444444',
+          'RECONCILE_PULL_REQUEST',
+          '{}'::jsonb,
+          'dedupe-completed',
+          5,
+          NOW()
+        );
+      `);
+
+      const result = await pg.query<{ count: string }>(`
+        SELECT COUNT(*)::text AS count
+        FROM worker_jobs
+        WHERE deduplication_key = 'dedupe-completed';
+      `);
+
+      expect(result.rows[0]?.count).toBe("2");
+    } finally {
+      await pg.close();
+    }
+  });
+
+  it("allows the same deduplication key after a dead job", async () => {
+    const pg = await setup();
+
+    try {
+      await pg.query(`
+        INSERT INTO worker_jobs (
+          id,
+          type,
+          payload,
+          deduplication_key,
+          max_attempts,
+          available_at,
+          status
+        )
+        VALUES (
+          '55555555-5555-4555-8555-555555555555',
+          'RECONCILE_PULL_REQUEST',
+          '{}'::jsonb,
+          'dedupe-dead',
+          5,
+          NOW(),
+          'DEAD'
+        );
+      `);
+
+      await pg.query(`
+        INSERT INTO worker_jobs (
+          id,
+          type,
+          payload,
+          deduplication_key,
+          max_attempts,
+          available_at
+        )
+        VALUES (
+          '66666666-6666-4666-8666-666666666666',
+          'RECONCILE_PULL_REQUEST',
+          '{}'::jsonb,
+          'dedupe-dead',
+          5,
+          NOW()
+        );
+      `);
+
+      const result = await pg.query<{ count: string }>(`
+        SELECT COUNT(*)::text AS count
+        FROM worker_jobs
+        WHERE deduplication_key = 'dedupe-dead';
+      `);
+
+      expect(result.rows[0]?.count).toBe("2");
     } finally {
       await pg.close();
     }

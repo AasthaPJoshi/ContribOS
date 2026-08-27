@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -307,7 +308,13 @@ export const workerJobs = pgTable(
     ...timestamps
   },
   (table) => [
-    uniqueIndex("worker_jobs_deduplication_key_uq").on(table.deduplicationKey),
+    uniqueIndex(
+      "worker_jobs_active_deduplication_key_uq"
+    )
+      .on(table.deduplicationKey)
+      .where(
+        sql`${table.status} in ('QUEUED', 'CLAIMED')`
+      ),
     index("worker_jobs_status_available_at_idx").on(table.status, table.availableAt),
     index("worker_jobs_claimed_at_idx").on(table.claimedAt)
   ]

@@ -66,6 +66,21 @@ export class RepositoryRepository {
     );
   }
 
+
+  async listByInstallationId(
+    installationId: string
+  ): Promise<RepositoryRow[]> {
+    return this.db
+      .select()
+      .from(repositories)
+      .where(
+        eq(
+          repositories.installationId,
+          installationId
+        )
+      );
+  }
+
   async findByGitHubRepositoryId(
     githubRepositoryId: string
   ): Promise<RepositoryRow | null> {

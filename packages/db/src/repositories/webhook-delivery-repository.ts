@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 
 import {
   and,
+  asc,
   eq,
+  inArray,
   lt
 } from "drizzle-orm";
 
@@ -153,6 +155,31 @@ export class WebhookDeliveryRepository
       );
     }
 
+    const candidates =
+      await this.db
+        .select({ id: webhookDeliveries.id })
+        .from(webhookDeliveries)
+        .where(
+          and(
+            eq(
+              webhookDeliveries.status,
+              "CLAIMED"
+            ),
+            lt(
+              webhookDeliveries.claimedAt,
+              input.staleBefore
+            )
+          )
+        )
+        .orderBy(
+          asc(webhookDeliveries.claimedAt)
+        )
+        .limit(limit);
+
+    if (candidates.length === 0) {
+      return [];
+    }
+
     return this.db
       .update(webhookDeliveries)
       .set({
@@ -162,6 +189,10 @@ export class WebhookDeliveryRepository
       })
       .where(
         and(
+          inArray(
+            webhookDeliveries.id,
+            candidates.map(({ id }) => id)
+          ),
           eq(
             webhookDeliveries.status,
             "CLAIMED"

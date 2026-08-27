@@ -31,7 +31,10 @@ export class WorkerJobRepository {
         createdAt: input.createdAt,
         updatedAt: input.createdAt
       })
-      .onConflictDoNothing({ target: workerJobs.deduplicationKey })
+      .onConflictDoNothing({
+        target: workerJobs.deduplicationKey,
+        where: sql`${workerJobs.status} in ('QUEUED', 'CLAIMED')`
+      })
       .returning({ id: workerJobs.id });
 
     return rows.length === 1;

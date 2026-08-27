@@ -1,0 +1,2 @@
+DROP INDEX "worker_jobs_deduplication_key_uq";--> statement-breakpoint
+CREATE UNIQUE INDEX "worker_jobs_active_deduplication_key_uq" ON "worker_jobs" USING btree ("deduplication_key") WHERE "worker_jobs"."status" in ('QUEUED', 'CLAIMED');

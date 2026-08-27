@@ -273,3 +273,37 @@ describe("GitHubApiClient", () => {
     });
   });
 });
+
+describe("authorization header protection", () => {
+  it("rejects caller attempts to override Authorization", async () => {
+    const tokenProvider = {
+      async getToken() {
+        return {
+          token: "installation-token",
+          expiresAt: new Date("2030-01-01T00:00:00Z"),
+          permissions: {},
+          repositorySelection: "all" as const,
+          repositoryIds: null
+        };
+      },
+      invalidate() {}
+    };
+
+    const client = new GitHubApiClient({
+      tokenProvider: tokenProvider as never,
+      fetchImpl: async () => {
+        throw new Error("fetch must not be called");
+      }
+    });
+
+    await expect(
+      client.request(1, "/repos/example/repo", {
+        headers: {
+          authorization: "Bearer attacker"
+        }
+      })
+    ).rejects.toMatchObject({
+      reasonCode: "AUTHORIZATION_HEADER_OVERRIDE"
+    });
+  });
+});

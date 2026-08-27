@@ -115,12 +115,26 @@ export class GitHubApiClient {
 
     this.validateScope(installationToken, options);
 
+    const callerHeaders: Record<string, string> = {};
+
+    for (const [key, value] of Object.entries(options.headers ?? {})) {
+      if (key.toLowerCase() === "authorization") {
+        throw new GitHubApiError(
+          "Caller-provided Authorization headers are not allowed.",
+          0,
+          "AUTHORIZATION_HEADER_OVERRIDE"
+        );
+      }
+
+      callerHeaders[key] = value;
+    }
+
     const headers: Record<string, string> = {
+      ...callerHeaders,
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${installationToken.token}`,
       "X-GitHub-Api-Version": this.apiVersion,
-      "User-Agent": this.userAgent,
-      ...options.headers
+      "User-Agent": this.userAgent
     };
 
     const body =

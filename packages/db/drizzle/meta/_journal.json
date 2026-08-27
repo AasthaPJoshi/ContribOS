@@ -15,6 +15,13 @@
       "when": 1787810452986,
       "tag": "0001_far_makkari",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787812075318,
+      "tag": "0002_light_ben_parker",
+      "breakpoints": true
     }
   ]
 }

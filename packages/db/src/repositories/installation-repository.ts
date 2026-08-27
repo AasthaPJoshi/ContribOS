@@ -60,6 +60,13 @@ export class InstallationRepository {
     );
   }
 
+
+  async listAll(): Promise<InstallationRow[]> {
+    return this.db
+      .select()
+      .from(installations);
+  }
+
   async findByGitHubInstallationId(
     githubInstallationId: string
   ): Promise<InstallationRow | null> {

@@ -71,6 +71,21 @@ export class ContributionRepository {
     );
   }
 
+
+  async listByRepositoryId(
+    repositoryId: string
+  ): Promise<ContributionRow[]> {
+    return this.db
+      .select()
+      .from(contributions)
+      .where(
+        eq(
+          contributions.repositoryId,
+          repositoryId
+        )
+      );
+  }
+
   async findByRepositoryAndNumber(
     repositoryId: string,
     pullRequestNumber: number
