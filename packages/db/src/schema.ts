@@ -287,6 +287,32 @@ export const reconciliationRuns = pgTable(
   ]
 );
 
+
+export const workerJobs = pgTable(
+  "worker_jobs",
+  {
+    id: uuid("id").primaryKey(),
+    type: text("type").notNull(),
+    payload: jsonb("payload").notNull(),
+    deduplicationKey: text("deduplication_key").notNull(),
+    status: text("status").notNull().default("QUEUED"),
+    attempt: integer("attempt").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull(),
+    availableAt: timestamp("available_at", { withTimezone: true }).notNull(),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    deadAt: timestamp("dead_at", { withTimezone: true }),
+    lastErrorCode: text("last_error_code"),
+    lastErrorMessage: text("last_error_message"),
+    ...timestamps
+  },
+  (table) => [
+    uniqueIndex("worker_jobs_deduplication_key_uq").on(table.deduplicationKey),
+    index("worker_jobs_status_available_at_idx").on(table.status, table.availableAt),
+    index("worker_jobs_claimed_at_idx").on(table.claimedAt)
+  ]
+);
+
 export const stateHistory = pgTable(
   "state_history",
   {
@@ -337,5 +363,7 @@ export type StateEvaluationRow =
   typeof stateEvaluations.$inferSelect;
 export type ReconciliationRunRow =
   typeof reconciliationRuns.$inferSelect;
+export type WorkerJobRow =
+  typeof workerJobs.$inferSelect;
 export type StateHistoryRow =
   typeof stateHistory.$inferSelect;

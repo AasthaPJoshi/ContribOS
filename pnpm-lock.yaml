@@ -66,6 +66,21 @@ importers:
         specifier: workspace:*
         version: link:../domain
 
+  packages/worker:
+    dependencies:
+      '@contribos/db':
+        specifier: workspace:*
+        version: link:../db
+      '@contribos/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@contribos/github':
+        specifier: workspace:*
+        version: link:../github
+      '@contribos/state-engine':
+        specifier: workspace:*
+        version: link:../state-engine
+
 packages:
 
   '@drizzle-team/brocli@0.10.2':

@@ -11,3 +11,4 @@ export * from "./repositories/reconciliation-run-repository.js";
 export * from "./repositories/state-history-repository.js";
 export * from "./persist-reconciliation.js";
 export * from "./persistence-errors.js";
+export * from "./repositories/worker-job-repository.js";
