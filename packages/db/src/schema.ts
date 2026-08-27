@@ -374,3 +374,114 @@ export type WorkerJobRow =
   typeof workerJobs.$inferSelect;
 export type StateHistoryRow =
   typeof stateHistory.$inferSelect;
+
+export const authUsers = pgTable(
+  "auth_users",
+  {
+    id: uuid("id").primaryKey(),
+    provider: text("provider").notNull(),
+    providerUserId: text(
+      "provider_user_id"
+    ).notNull(),
+    login: text("login").notNull(),
+    avatarUrl: text("avatar_url"),
+    githubAccessTokenCiphertext: text(
+      "github_access_token_ciphertext"
+    ).notNull(),
+    githubAccessTokenExpiresAt: timestamp(
+      "github_access_token_expires_at",
+      {
+        withTimezone: true
+      }
+    ),
+    githubRefreshTokenCiphertext: text(
+      "github_refresh_token_ciphertext"
+    ),
+    githubRefreshTokenExpiresAt: timestamp(
+      "github_refresh_token_expires_at",
+      {
+        withTimezone: true
+      }
+    ),
+    ...timestamps
+  },
+  (table) => [
+    uniqueIndex(
+      "auth_users_provider_user_id_uq"
+    ).on(
+      table.provider,
+      table.providerUserId
+    ),
+    index("auth_users_login_idx").on(
+      table.login
+    )
+  ]
+);
+
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, {
+        onDelete: "cascade"
+      }),
+    tokenHash: text("token_hash")
+      .notNull(),
+    expiresAt: timestamp("expires_at", {
+      withTimezone: true
+    }).notNull(),
+    revokedAt: timestamp("revoked_at", {
+      withTimezone: true
+    }),
+    lastSeenAt: timestamp("last_seen_at", {
+      withTimezone: true
+    })
+      .notNull()
+      .defaultNow(),
+    ...timestamps
+  },
+  (table) => [
+    uniqueIndex(
+      "auth_sessions_token_hash_uq"
+    ).on(table.tokenHash),
+    index(
+      "auth_sessions_user_expires_idx"
+    ).on(table.userId, table.expiresAt),
+    index(
+      "auth_sessions_expires_idx"
+    ).on(table.expiresAt)
+  ]
+);
+
+export const oauthStates = pgTable(
+  "oauth_states",
+  {
+    id: uuid("id").primaryKey(),
+    stateHash: text("state_hash")
+      .notNull(),
+    expiresAt: timestamp("expires_at", {
+      withTimezone: true
+    }).notNull(),
+    consumedAt: timestamp(
+      "consumed_at",
+      {
+        withTimezone: true
+      }
+    ),
+    createdAt: timestamp("created_at", {
+      withTimezone: true
+    })
+      .notNull()
+      .defaultNow()
+  },
+  (table) => [
+    uniqueIndex(
+      "oauth_states_state_hash_uq"
+    ).on(table.stateHash),
+    index(
+      "oauth_states_expires_idx"
+    ).on(table.expiresAt)
+  ]
+);

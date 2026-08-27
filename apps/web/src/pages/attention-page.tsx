@@ -270,7 +270,7 @@ export function AttentionPage() {
         <section className="attention-list">
           {page.items.map((item) => (
             <AttentionItemCard
-              key={item.id}
+              key={item.contributionId}
               repositoryId={repositoryId}
               item={item}
             />

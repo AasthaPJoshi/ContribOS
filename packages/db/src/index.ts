@@ -12,3 +12,7 @@ export * from "./repositories/state-history-repository.js";
 export * from "./persist-reconciliation.js";
 export * from "./persistence-errors.js";
 export * from "./repositories/worker-job-repository.js";
+export * from "./repositories/auth-user-repository.js";
+export * from "./repositories/auth-session-repository.js";
+export * from "./repositories/oauth-state-repository.js";
+export * from "./repositories/repository-access-scope-repository.js";

@@ -22,6 +22,13 @@
       "when": 1787812075318,
       "tag": "0002_light_ben_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787814686627,
+      "tag": "0003_lethal_may_parker",
+      "breakpoints": true
     }
   ]
 }

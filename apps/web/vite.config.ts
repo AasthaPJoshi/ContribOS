@@ -1,23 +1,26 @@
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import {
+  defineConfig
+} from "vite";
+
+const controlPlane =
+  "http://127.0.0.1:3000";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react()
+  ],
   server: {
     port: 5173,
     proxy: {
-      "/api": {
-        target: "http://127.0.0.1:3000",
-        changeOrigin: true
-      },
-      "/live": {
-        target: "http://127.0.0.1:3000",
-        changeOrigin: true
-      },
-      "/ready": {
-        target: "http://127.0.0.1:3000",
-        changeOrigin: true
-      }
+      "/api":
+        controlPlane,
+      "/auth":
+        controlPlane,
+      "/live":
+        controlPlane,
+      "/ready":
+        controlPlane
     }
   }
 });

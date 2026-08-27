@@ -28,6 +28,12 @@ export type Readiness =
   | "COMPLETE"
   | "AMBIGUOUS";
 
+export interface CurrentUser {
+  provider: "GITHUB";
+  providerUserId: string;
+  login: string;
+}
+
 export interface RepositoryIdentity {
   id: string;
   githubRepositoryId: string;
@@ -80,11 +86,18 @@ export interface RepositoryDashboard {
   oldestUnreconciledAt: string | null;
 }
 
-export interface AttentionQueueItem
-  extends RepositoryContributionSummary {
+export interface AttentionQueueItem {
+  contributionId: string;
   repositoryId: string;
   repositoryFullName: string;
+  pullRequestNumber: number;
+  url: string;
   updatedAt: string;
+  lastReconciledAt: string | null;
+  workflowState: WorkflowState;
+  nextActor: NextActor;
+  readiness: Readiness;
+  reasonCode: string;
   priorityScore: number;
   priorityBand:
     | "CRITICAL"

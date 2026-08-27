@@ -2,6 +2,7 @@ import type {
   AttentionQueuePage,
   ContributionDecisionTrail,
   ContributionDetail,
+  CurrentUser,
   RepositoryDashboard,
   RepositoryOverview
 } from "./types.js";
@@ -29,20 +30,22 @@ async function getJson<T>(
   });
 
   if (!response.ok) {
-    let reasonCode = `HTTP_${response.status}`;
+    let reasonCode =
+      `HTTP_${response.status}`;
 
     try {
-      const body = await response.json() as {
-        reasonCode?: string;
-        status?: string;
-      };
+      const body =
+        await response.json() as {
+          reasonCode?: string;
+          status?: string;
+        };
 
       reasonCode =
         body.reasonCode ??
         body.status ??
         reasonCode;
     } catch {
-      // Keep the status-derived reason code.
+      // Keep status-derived reason.
     }
 
     throw new ApiError(
@@ -51,7 +54,48 @@ async function getJson<T>(
     );
   }
 
-  return response.json() as Promise<T>;
+  return response.json() as
+    Promise<T>;
+}
+
+async function postNoContent(
+  path: string
+): Promise<void> {
+  const response = await fetch(
+    path,
+    {
+      method: "POST",
+      headers: {
+        accept:
+          "application/json"
+      }
+    }
+  );
+
+  if (!response.ok) {
+    let reasonCode =
+      `HTTP_${response.status}`;
+
+    try {
+      const body =
+        await response.json() as {
+          reasonCode?: string;
+          status?: string;
+        };
+
+      reasonCode =
+        body.reasonCode ??
+        body.status ??
+        reasonCode;
+    } catch {
+      // Keep status-derived reason.
+    }
+
+    throw new ApiError(
+      response.status,
+      reasonCode
+    );
+  }
 }
 
 function repositoryPath(
@@ -69,12 +113,35 @@ export interface AttentionQuery {
 }
 
 export const contribOSApi = {
+  currentUser(
+    signal?: AbortSignal
+  ): Promise<CurrentUser> {
+    return getJson<{
+      user: CurrentUser;
+    }>(
+      "/api/auth/me",
+      signal
+    ).then(
+      (result) =>
+        result.user
+    );
+  },
+
+  async signOut():
+    Promise<void> {
+    await postNoContent(
+      "/auth/logout"
+    );
+  },
+
   repositoryOverview(
     githubRepositoryId: number,
     signal?: AbortSignal
   ): Promise<RepositoryOverview> {
     return getJson(
-      repositoryPath(githubRepositoryId),
+      repositoryPath(
+        githubRepositoryId
+      ),
       signal
     );
   },
@@ -93,20 +160,31 @@ export const contribOSApi = {
 
   attentionQueue(
     githubRepositoryId: number,
-    query: AttentionQuery = {},
+    query:
+      AttentionQuery = {},
     signal?: AbortSignal
   ): Promise<AttentionQueuePage> {
-    const params = new URLSearchParams();
+    const params =
+      new URLSearchParams();
 
-    for (const [key, value] of Object.entries(query)) {
-      if (value !== undefined) {
-        params.set(key, String(value));
+    for (
+      const [key, value] of
+      Object.entries(query)
+    ) {
+      if (
+        value !== undefined
+      ) {
+        params.set(
+          key,
+          String(value)
+        );
       }
     }
 
-    const suffix = params.size
-      ? `?${params.toString()}`
-      : "";
+    const suffix =
+      params.size
+        ? `?${params.toString()}`
+        : "";
 
     return getJson(
       `${repositoryPath(

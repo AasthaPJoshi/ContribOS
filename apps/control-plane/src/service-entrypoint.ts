@@ -1,4 +1,8 @@
 import {
+  AuthSessionRepository,
+  AuthUserRepository,
+  OAuthStateRepository,
+  RepositoryAccessScopeRepository,
   WebhookDeliveryRepository
 } from "@contribos/db";
 
@@ -12,55 +16,147 @@ import {
   createJsonLogger
 } from "./logger.js";
 import {
+  ProductQueryService
+} from "./product-query-service.js";
+import {
   createRuntimeHandle
 } from "./runtime-factory.js";
+import {
+  loadAuthConfig
+} from "./security/auth-config.js";
+import {
+  AuthService
+} from "./security/auth-service.js";
+import {
+  GitHubOAuthClient
+} from "./security/github-oauth-client.js";
+import {
+  GitHubUserAccessClient
+} from "./security/github-user-access-client.js";
+import {
+  RepositoryAuthorizationService
+} from "./security/repository-authorization-service.js";
 import {
   loadServiceConfig
 } from "./service-config.js";
 import {
-  ProductQueryService
-} from "./product-query-service.js";
-import {
   SweepScheduler
 } from "./sweep-scheduler.js";
 
-const config = loadServiceConfig();
-const logger = createJsonLogger();
+const config =
+  loadServiceConfig();
+const authConfig =
+  loadAuthConfig();
+const logger =
+  createJsonLogger();
 
-const handle = createRuntimeHandle({
-  databaseUrl: config.databaseUrl,
-  githubAppId: config.githubAppId,
-  githubPrivateKey: config.githubPrivateKey
-});
+const handle =
+  createRuntimeHandle({
+    databaseUrl:
+      config.databaseUrl,
+    githubAppId:
+      config.githubAppId,
+    githubPrivateKey:
+      config.githubPrivateKey
+  });
 
 const deliveries =
-  new WebhookDeliveryRepository(handle.db);
+  new WebhookDeliveryRepository(
+    handle.db
+  );
 
-const webhook = new GitHubWebhookService(
-  config.githubWebhookSecret,
-  deliveries,
-  handle.runtime.webhooks
-);
+const webhook =
+  new GitHubWebhookService(
+    config.githubWebhookSecret,
+    deliveries,
+    handle.runtime.webhooks
+  );
 
 const productQueries =
-  new ProductQueryService(handle.db);
+  new ProductQueryService(
+    handle.db
+  );
 
-const scheduler = new SweepScheduler(
-  handle.db,
-  handle.runtime.sweepProducer,
-  logger,
-  {
-    intervalMs:
-      config.reconciliationSweepIntervalMs
-  }
-);
+const auth =
+  new AuthService({
+    oauth:
+      new GitHubOAuthClient({
+        clientId:
+          authConfig
+            .githubOAuthClientId,
+        clientSecret:
+          authConfig
+            .githubOAuthClientSecret,
+        callbackUrl:
+          authConfig.callbackUrl
+      }),
+    users:
+      new AuthUserRepository(
+        handle.db
+      ),
+    sessions:
+      new AuthSessionRepository(
+        handle.db
+      ),
+    oauthStates:
+      new OAuthStateRepository(
+        handle.db
+      ),
+    credentialEncryptionKey:
+      authConfig
+        .credentialEncryptionKey,
+    secureCookies:
+      authConfig.secureCookies,
+    sessionTtlSeconds:
+      authConfig
+        .sessionTtlSeconds,
+    oauthStateTtlSeconds:
+      authConfig
+        .oauthStateTtlSeconds
+  });
 
-const server = createControlPlaneServer({
-  health: handle.runtime.health,
-  webhook,
-  logger,
-  productQueries
-});
+const repositoryAuthorization =
+  new RepositoryAuthorizationService(
+    {
+      scopes:
+        new RepositoryAccessScopeRepository(
+          handle.db
+        ),
+      github:
+        new GitHubUserAccessClient(),
+      credentialEncryptionKey:
+        authConfig
+          .credentialEncryptionKey
+    }
+  );
+
+const scheduler =
+  new SweepScheduler(
+    handle.db,
+    handle.runtime
+      .sweepProducer,
+    logger,
+    {
+      intervalMs:
+        config
+          .reconciliationSweepIntervalMs
+    }
+  );
+
+const server =
+  createControlPlaneServer({
+    health:
+      handle.runtime.health,
+    webhook,
+    logger,
+    productQueries,
+    auth,
+    repositoryAuthorization,
+    publicOrigin:
+      new URL(
+        authConfig.publicBaseUrl
+      ).origin
+  });
 
 let shuttingDown = false;
 
@@ -78,25 +174,72 @@ async function shutdown(
     { signal }
   );
 
-  handle.runtime.requestShutdown();
+  handle.runtime
+    .requestShutdown();
   scheduler.stop();
 
-  await new Promise<void>((resolve) => {
-    server.close(() => resolve());
-  });
+  await new Promise<void>(
+    (resolve) => {
+      server.close(
+        () => resolve()
+      );
+    }
+  );
 
   await handle.close();
 }
 
-for (const signal of ["SIGINT", "SIGTERM"] as const) {
-  process.on(signal, () => {
-    void shutdown(signal)
-      .then(() => {
-        process.exitCode = 0;
-      })
+for (
+  const signal of
+  ["SIGINT", "SIGTERM"] as const
+) {
+  process.on(
+    signal,
+    () => {
+      void shutdown(signal)
+        .then(() => {
+          process.exitCode = 0;
+        })
+        .catch((error) => {
+          logger.error(
+            "service.shutdown.failed",
+            {
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Unknown failure."
+            }
+          );
+
+          process.exitCode = 1;
+        });
+    }
+  );
+}
+
+server.listen(
+  config.port,
+  config.host,
+  () => {
+    handle.runtime
+      .markReady();
+    scheduler.start();
+
+    logger.info(
+      "service.started",
+      {
+        host:
+          config.host,
+        port:
+          config.port
+      }
+    );
+
+    void handle.runtime
+      .loop.run()
       .catch((error) => {
         logger.error(
-          "service.shutdown.failed",
+          "worker.loop.failed",
           {
             message:
               error instanceof Error
@@ -104,38 +247,10 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
                 : "Unknown failure."
           }
         );
-        process.exitCode = 1;
+
+        void shutdown(
+          "WORKER_LOOP_FAILURE"
+        );
       });
-  });
-}
-
-server.listen(
-  config.port,
-  config.host,
-  () => {
-    handle.runtime.markReady();
-    scheduler.start();
-
-    logger.info(
-      "service.started",
-      {
-        host: config.host,
-        port: config.port
-      }
-    );
-
-    void handle.runtime.loop.run().catch((error) => {
-      logger.error(
-        "worker.loop.failed",
-        {
-          message:
-            error instanceof Error
-              ? error.message
-              : "Unknown failure."
-        }
-      );
-
-      void shutdown("WORKER_LOOP_FAILURE");
-    });
   }
 );
