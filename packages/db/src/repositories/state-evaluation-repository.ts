@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { desc, eq } from "drizzle-orm";
+
 import type { StateEvaluation } from "@contribos/domain";
 
 import type { ContribOSDatabase } from "../database.js";
@@ -13,6 +15,19 @@ export class StateEvaluationRepository {
   constructor(
     private readonly db: ContribOSDatabase
   ) {}
+
+  async findLatestByContributionId(
+    contributionId: string
+  ): Promise<StateEvaluationRow | null> {
+    const rows = await this.db
+      .select()
+      .from(stateEvaluations)
+      .where(eq(stateEvaluations.contributionId, contributionId))
+      .orderBy(desc(stateEvaluations.evaluatedAt), desc(stateEvaluations.createdAt))
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
 
   async append(
     contributionId: string,

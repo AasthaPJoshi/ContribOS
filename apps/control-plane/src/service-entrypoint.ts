@@ -18,6 +18,9 @@ import {
   loadServiceConfig
 } from "./service-config.js";
 import {
+  ProductQueryService
+} from "./product-query-service.js";
+import {
   SweepScheduler
 } from "./sweep-scheduler.js";
 
@@ -39,6 +42,9 @@ const webhook = new GitHubWebhookService(
   handle.runtime.webhooks
 );
 
+const productQueries =
+  new ProductQueryService(handle.db);
+
 const scheduler = new SweepScheduler(
   handle.db,
   handle.runtime.sweepProducer,
@@ -52,7 +58,8 @@ const scheduler = new SweepScheduler(
 const server = createControlPlaneServer({
   health: handle.runtime.health,
   webhook,
-  logger
+  logger,
+  productQueries
 });
 
 let shuttingDown = false;

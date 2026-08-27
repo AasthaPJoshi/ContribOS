@@ -13,3 +13,8 @@ export * from "./service-config.js";
 export * from "./github-webhook-service.js";
 export * from "./http-server.js";
 export * from "./sweep-scheduler.js";
+export * from "./product-query-service.js";
+export * from "./maintainer-attention-queue.js";
+export * from "./contribution-decision-trail.js";
+export * from "./repository-dashboard.js";
+export * from "./product-http-api.js";

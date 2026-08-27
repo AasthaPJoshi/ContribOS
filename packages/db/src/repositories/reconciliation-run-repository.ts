@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { desc, eq } from "drizzle-orm";
+
 import type { PullRequestReconciliationResult } from "@contribos/github";
 
 import type { ContribOSDatabase } from "../database.js";
@@ -20,6 +22,22 @@ export class ReconciliationRunRepository {
   constructor(
     private readonly db: ContribOSDatabase
   ) {}
+
+  async listByContributionId(
+    contributionId: string,
+    limit = 100
+  ): Promise<ReconciliationRunRow[]> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) {
+      throw new Error("reconciliation run limit must be between 1 and 500.");
+    }
+
+    return this.db
+      .select()
+      .from(reconciliationRuns)
+      .where(eq(reconciliationRuns.contributionId, contributionId))
+      .orderBy(desc(reconciliationRuns.completedAt), desc(reconciliationRuns.createdAt))
+      .limit(limit);
+  }
 
   async append(
     input: AppendReconciliationRunInput

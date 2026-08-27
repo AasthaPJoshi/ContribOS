@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { desc, eq } from "drizzle-orm";
+
 import type { ContribOSDatabase } from "../database.js";
 import {
   stateHistory,
@@ -20,6 +22,22 @@ export class StateHistoryRepository {
   constructor(
     private readonly db: ContribOSDatabase
   ) {}
+
+  async listByContributionId(
+    contributionId: string,
+    limit = 100
+  ): Promise<StateHistoryRow[]> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) {
+      throw new Error("state history limit must be between 1 and 500.");
+    }
+
+    return this.db
+      .select()
+      .from(stateHistory)
+      .where(eq(stateHistory.contributionId, contributionId))
+      .orderBy(desc(stateHistory.changedAt), desc(stateHistory.createdAt))
+      .limit(limit);
+  }
 
   async append(
     input: AppendStateHistoryInput

@@ -14,6 +14,10 @@ import type {
 import type {
   RuntimeLogger
 } from "./logger.js";
+import {
+  handleProductHttpRequest,
+  type ProductQueryApi
+} from "./product-http-api.js";
 
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
@@ -70,6 +74,7 @@ export interface HttpServerOptions {
   health: RuntimeHealth;
   webhook: GitHubWebhookService;
   logger: RuntimeLogger;
+  productQueries: ProductQueryApi;
 }
 
 export function createControlPlaneServer(
@@ -93,6 +98,26 @@ export function createControlPlaneServer(
           const snapshot = options.health.snapshot();
           json(response, snapshot.ready ? 200 : 503, snapshot);
           return;
+        }
+
+        if (
+          request.method === "GET" &&
+          request.url?.startsWith("/api/")
+        ) {
+          const result =
+            await handleProductHttpRequest(
+              request,
+              options.productQueries
+            );
+
+          if (result.handled) {
+            json(
+              response,
+              result.statusCode,
+              result.body
+            );
+            return;
+          }
         }
 
         if (
