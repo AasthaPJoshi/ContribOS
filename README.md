@@ -64,3 +64,5 @@ The initial deterministic pull request state engine covers:
 ## License
 
 Apache-2.0
+
+Dogfood test: first live ContribOS pull request.
