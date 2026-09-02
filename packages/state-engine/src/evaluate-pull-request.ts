@@ -6,6 +6,9 @@ import type {
 export function evaluatePullRequest(
   snapshot: PullRequestSnapshot
 ): StateEvaluation {
+  const ciSatisfied =
+    snapshot.checkStatus === "SUCCESS" ||
+    snapshot.checkStatus === "NOT_REQUIRED";
   if (snapshot.isMerged) {
     return {
       workflowState: "MERGED",
@@ -144,7 +147,7 @@ export function evaluatePullRequest(
 
   if (
     snapshot.reviewDecision === "REVIEW_REQUIRED" &&
-    snapshot.checkStatus === "SUCCESS" &&
+    ciSatisfied &&
     !snapshot.authorHasChangesToMake &&
     snapshot.maintainerReviewRequired
   ) {
@@ -178,7 +181,7 @@ export function evaluatePullRequest(
 
   if (
     snapshot.reviewDecision === "APPROVED" &&
-    snapshot.checkStatus === "SUCCESS" &&
+    ciSatisfied &&
     !snapshot.hasMergeConflict &&
     !snapshot.authorHasChangesToMake &&
     !snapshot.maintainerReviewRequired

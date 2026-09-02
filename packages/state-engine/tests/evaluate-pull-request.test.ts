@@ -2,6 +2,24 @@ import { describe, expect, it } from "vitest";
 import { evaluatePullRequest } from "../src/evaluate-pull-request.js";
 
 describe("evaluatePullRequest", () => {
+
+  it("treats NOT_REQUIRED CI as non-blocking", () => {
+    const result = evaluatePullRequest({
+      evidence: [],
+      isDraft: false,
+      isOpen: true,
+      isMerged: false,
+      hasMergeConflict: false,
+      checkStatus: "NOT_REQUIRED",
+      reviewDecision: "APPROVED",
+      authorHasChangesToMake: false,
+      maintainerReviewRequired: false
+    });
+
+    expect(result.workflowState).not.toBe("AMBIGUOUS");
+    expect(result.reasonCode).not.toBe("CI_STATUS_UNKNOWN");
+  });
+
   it("marks a merged pull request as ready for release", () => {
     const result = evaluatePullRequest({
     evidence: [],

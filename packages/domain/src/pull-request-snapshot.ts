@@ -2,6 +2,7 @@ export type CheckStatus =
   | "PENDING"
   | "SUCCESS"
   | "FAILURE"
+  | "NOT_REQUIRED"
   | "UNKNOWN";
 
 export type ReviewDecision =
