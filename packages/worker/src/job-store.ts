@@ -28,10 +28,16 @@ export interface JobStore {
   reschedule(
     jobId: string,
     nextAttempt: number,
-    availableAt: Date
+    availableAt: Date,
+    errorCode?: string,
+    errorMessage?: string
   ): Promise<void>;
 
-  markDead(jobId: string): Promise<void>;
+  markDead(
+    jobId: string,
+    errorCode?: string,
+    errorMessage?: string
+  ): Promise<void>;
 
   release(jobId: string): Promise<void>;
 

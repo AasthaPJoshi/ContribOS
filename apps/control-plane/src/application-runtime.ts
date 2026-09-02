@@ -92,7 +92,9 @@ export class ApplicationRuntime {
             jobRescheduled: (
               job,
               nextAttempt,
-              availableAt
+              availableAt,
+              errorCode,
+              errorMessage
             ) =>
               options.logger.warn(
                 "worker.job.rescheduled",
@@ -102,19 +104,23 @@ export class ApplicationRuntime {
                   nextAttempt,
                   availableAt:
                     availableAt
-                      .toISOString()
+                      .toISOString(),
+                  errorCode,
+                  errorMessage
                 }
               ),
             jobDead: (
               job,
-              errorCode
+              errorCode,
+              errorMessage
             ) =>
               options.logger.error(
                 "worker.job.dead",
                 {
                   jobId: job.id,
                   type: job.type,
-                  errorCode
+                  errorCode,
+                  errorMessage
                 }
               )
           }

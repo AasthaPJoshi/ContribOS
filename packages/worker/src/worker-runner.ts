@@ -78,8 +78,16 @@ export class WorkerRunner {
       const nextAttempt = job.attempt + 1;
 
       if (!failure.retryable || nextAttempt >= job.maxAttempts) {
-        await this.store.markDead(job.id);
-        await this.observer.jobDead?.(job, failure.code);
+        await this.store.markDead(
+          job.id,
+          failure.code,
+          failure.message
+        );
+        await this.observer.jobDead?.(
+          job,
+          failure.code,
+          failure.message
+        );
 
         return {
           status: "DEAD",
@@ -97,13 +105,17 @@ export class WorkerRunner {
       await this.store.reschedule(
         job.id,
         nextAttempt,
-        availableAt
+        availableAt,
+        failure.code,
+        failure.message
       );
 
       await this.observer.jobRescheduled?.(
         job,
         nextAttempt,
-        availableAt
+        availableAt,
+        failure.code,
+        failure.message
       );
 
       return {

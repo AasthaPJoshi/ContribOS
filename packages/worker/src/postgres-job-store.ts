@@ -41,18 +41,31 @@ export class PostgresJobStore implements JobStore {
   async reschedule(
     jobId: string,
     nextAttempt: number,
-    availableAt: Date
+    availableAt: Date,
+    errorCode?: string,
+    errorMessage?: string
   ): Promise<void> {
     await this.repository.reschedule(
       jobId,
       nextAttempt,
       availableAt,
-      new Date()
+      new Date(),
+      errorCode,
+      errorMessage
     );
   }
 
-  async markDead(jobId: string): Promise<void> {
-    await this.repository.markDead(jobId, new Date());
+  async markDead(
+    jobId: string,
+    errorCode?: string,
+    errorMessage?: string
+  ): Promise<void> {
+    await this.repository.markDead(
+      jobId,
+      new Date(),
+      errorCode,
+      errorMessage
+    );
   }
 
   async release(jobId: string): Promise<void> {
