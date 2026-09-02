@@ -32,12 +32,19 @@ export interface GitHubApiRequestOptions {
 export class GitHubApiError extends Error {
   readonly status: number;
   readonly reasonCode: string;
+  readonly githubMessage: string | null;
 
-  constructor(message: string, status: number, reasonCode = "GITHUB_API_ERROR") {
+  constructor(
+    message: string,
+    status: number,
+    reasonCode = "GITHUB_API_ERROR",
+    githubMessage: string | null = null
+  ) {
     super(message);
     this.name = "GitHubApiError";
     this.status = status;
     this.reasonCode = reasonCode;
+    this.githubMessage = githubMessage;
   }
 }
 
@@ -193,9 +200,23 @@ export class GitHubApiClient {
     const responseBody = await readResponseBody(response);
 
     if (!response.ok) {
+      const responseRecord =
+        typeof responseBody === "object" &&
+        responseBody !== null &&
+        !Array.isArray(responseBody)
+          ? (responseBody as Record<string, unknown>)
+          : null;
+
+      const githubMessage =
+        typeof responseRecord?.["message"] === "string"
+          ? responseRecord["message"]
+          : null;
+
       throw new GitHubApiError(
         `GitHub API request failed with HTTP ${response.status}.`,
-        response.status
+        response.status,
+        "GITHUB_API_ERROR",
+        githubMessage
       );
     }
 

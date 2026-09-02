@@ -4,7 +4,10 @@ import type {
   ReviewDecision
 } from "@contribos/domain";
 
-import type { GitHubApiRequestOptions } from "./github-api-client.js";
+import {
+  GitHubApiError,
+  type GitHubApiRequestOptions
+} from "./github-api-client.js";
 import type { GitHubPullRequestRecord } from "./pull-request-record.js";
 import { toPullRequestSnapshot } from "./pull-request-record.js";
 import {
@@ -297,6 +300,16 @@ async function fetchStablePullRequest(
   );
 
   return parsePullRequest(finalResponse);
+}
+
+function isUnavailableBranchRulesFeature(error: unknown): boolean {
+  return (
+    error instanceof GitHubApiError &&
+    error.status === 403 &&
+    error.githubMessage?.includes(
+      "Upgrade to GitHub Pro or make this repository public"
+    ) === true
+  );
 }
 
 async function fetchPaginatedArray(
@@ -689,7 +702,8 @@ function requiredCheckState(
 function deriveCheckStatus(
   checkRuns: UnknownRecord[],
   statusItems: unknown[],
-  requiredChecks: RequiredStatusCheck[]
+  requiredChecks: RequiredStatusCheck[],
+  policyAvailability: PullRequestPolicy["policyAvailability"]
 ): CheckStatus {
   const statuses = parseLatestStatuses(statusItems);
 
@@ -729,7 +743,9 @@ function deriveCheckStatus(
   }
 
   if (checkRuns.length === 0 && statuses.size === 0) {
-    return "UNKNOWN";
+    return policyAvailability === "AVAILABLE"
+      ? "NOT_REQUIRED"
+      : "UNKNOWN";
   }
 
   let sawPending = false;
@@ -995,21 +1011,37 @@ export async function reconcilePullRequest(
     `${encodeURIComponent(initialPullRequest.headSha)}` +
     `/statuses`;
 
+  const rulesPromise = fetchPaginatedArray(
+    client,
+    input.installationId,
+    input.repositoryId,
+    rulesPath,
+    "metadata",
+    maxPages,
+    "INVALID_RULES_RESPONSE"
+  )
+    .then((rules) => ({
+      availability: "AVAILABLE" as const,
+      rules
+    }))
+    .catch((error: unknown) => {
+      if (isUnavailableBranchRulesFeature(error)) {
+        return {
+          availability: "UNAVAILABLE" as const,
+          rules: []
+        };
+      }
+
+      throw error;
+    });
+
   const [
-    rulesResponse,
+    rulesResult,
     reviews,
     checkRuns,
     statuses
   ] = await Promise.all([
-    fetchPaginatedArray(
-      client,
-      input.installationId,
-      input.repositoryId,
-      rulesPath,
-      "metadata",
-      maxPages,
-      "INVALID_RULES_RESPONSE"
-    ),
+    rulesPromise,
     fetchPaginatedArray(
       client,
       input.installationId,
@@ -1040,7 +1072,14 @@ export async function reconcilePullRequest(
   let policy: PullRequestPolicy;
 
   try {
-    policy = derivePullRequestPolicy(rulesResponse);
+    policy = derivePullRequestPolicy(rulesResult.rules);
+
+    if (rulesResult.availability === "UNAVAILABLE") {
+      policy = {
+        ...policy,
+        policyAvailability: "UNAVAILABLE"
+      };
+    }
   } catch {
     throw new GitHubReconciliationError(
       "GitHub returned an invalid branch rules response.",
@@ -1057,7 +1096,8 @@ export async function reconcilePullRequest(
   const checkStatus = deriveCheckStatus(
     checkRuns,
     statuses,
-    policy.requiredStatusChecks
+    policy.requiredStatusChecks,
+    policy.policyAvailability
   );
 
   const finalPullRequest = parsePullRequest(

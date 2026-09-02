@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { GitHubApiError } from "../src/github-api-client.js";
+
 import {
   GitHubReconciliationError,
   reconcilePullRequest,
@@ -188,6 +190,131 @@ describe("reconcilePullRequest hardened", () => {
       action: "REPLACE_WITH_AUTHORITATIVE",
       reasonCode: "AUTHORITATIVE_BASELINE"
     });
+  });
+
+
+  it("marks CI as NOT_REQUIRED when policy is available and no checks are required", async () => {
+    const { client } = createClient((path) => {
+      if (
+        path ===
+        "/repos/example/contribos/pulls/42"
+      ) {
+        return pullRequest();
+      }
+
+      if (
+        path.startsWith(
+          "/repos/example/contribos/rules/branches/main"
+        )
+      ) {
+        return [];
+      }
+
+      if (
+        path.startsWith(
+          "/repos/example/contribos/pulls/42/reviews"
+        )
+      ) {
+        return [];
+      }
+
+      if (
+        path.startsWith(
+          "/repos/example/contribos/commits/abc123/check-runs"
+        )
+      ) {
+        return {
+          check_runs: []
+        };
+      }
+
+      if (
+        path.startsWith(
+          "/repos/example/contribos/commits/abc123/statuses"
+        )
+      ) {
+        return [];
+      }
+
+      throw new Error(`Unexpected path: ${path}`);
+    });
+
+    const result = await reconcilePullRequest(
+      client,
+      input
+    );
+
+    expect(result.policy?.policyAvailability).toBe(
+      "AVAILABLE"
+    );
+    expect(result.record?.checkStatus).toBe(
+      "NOT_REQUIRED"
+    );
+  });
+
+
+  it("keeps CI UNKNOWN when branch policy is unavailable", async () => {
+    const { client } = createClient((path) => {
+      if (
+        path ===
+        "/repos/example/contribos/pulls/42"
+      ) {
+        return pullRequest();
+      }
+
+      if (
+        path.startsWith(
+          "/repos/example/contribos/rules/branches/main"
+        )
+      ) {
+        throw new GitHubApiError(
+          "GitHub API request failed with HTTP 403.",
+          403,
+          "GITHUB_API_ERROR",
+          "Upgrade to GitHub Pro or make this repository public to enable this feature."
+        );
+      }
+
+      if (
+        path.startsWith(
+          "/repos/example/contribos/pulls/42/reviews"
+        )
+      ) {
+        return [];
+      }
+
+      if (
+        path.startsWith(
+          "/repos/example/contribos/commits/abc123/check-runs"
+        )
+      ) {
+        return {
+          check_runs: []
+        };
+      }
+
+      if (
+        path.startsWith(
+          "/repos/example/contribos/commits/abc123/statuses"
+        )
+      ) {
+        return [];
+      }
+
+      throw new Error(`Unexpected path: ${path}`);
+    });
+
+    const result = await reconcilePullRequest(
+      client,
+      input
+    );
+
+    expect(result.policy?.policyAvailability).toBe(
+      "UNAVAILABLE"
+    );
+    expect(result.record?.checkStatus).toBe(
+      "UNKNOWN"
+    );
   });
 
   it("uses a required legacy commit status when no check run matches", async () => {
