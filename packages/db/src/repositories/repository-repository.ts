@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 
 import type { ContribOSDatabase } from "../database.js";
 import {
@@ -42,6 +42,7 @@ export class RepositoryRepository {
         defaultBranch:
           input.defaultBranch ?? null,
         isPrivate: input.isPrivate,
+        isActive: true,
         createdAt: now,
         updatedAt: now
       })
@@ -55,6 +56,7 @@ export class RepositoryRepository {
           defaultBranch:
             input.defaultBranch ?? null,
           isPrivate: input.isPrivate,
+          isActive: true,
           updatedAt: now
         }
       })
@@ -66,6 +68,49 @@ export class RepositoryRepository {
     );
   }
 
+
+  async deactivateMissingByInstallationId(
+    installationId: string,
+    activeGitHubRepositoryIds: string[]
+  ): Promise<void> {
+    const now = new Date();
+
+    if (activeGitHubRepositoryIds.length === 0) {
+      await this.db
+        .update(repositories)
+        .set({
+          isActive: false,
+          updatedAt: now
+        })
+        .where(
+          eq(
+            repositories.installationId,
+            installationId
+          )
+        );
+
+      return;
+    }
+
+    await this.db
+      .update(repositories)
+      .set({
+        isActive: false,
+        updatedAt: now
+      })
+      .where(
+        and(
+          eq(
+            repositories.installationId,
+            installationId
+          ),
+          notInArray(
+            repositories.githubRepositoryId,
+            activeGitHubRepositoryIds
+          )
+        )
+      );
+  }
 
   async listByInstallationId(
     installationId: string

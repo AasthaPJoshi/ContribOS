@@ -67,6 +67,9 @@ export const repositories = pgTable(
     isPrivate: boolean("is_private")
       .notNull()
       .default(false),
+    isActive: boolean("is_active")
+      .notNull()
+      .default(true),
     ...timestamps
   },
   (table) => [

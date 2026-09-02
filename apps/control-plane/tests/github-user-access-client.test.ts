@@ -52,7 +52,10 @@ describe(
         {
           id: 99,
           accountLogin:
-            "example-org"
+            "example-org",
+          accountType: null,
+          repositorySelection: null,
+          permissions: {}
         }
       ]);
 
@@ -108,8 +111,12 @@ describe(
       ).resolves.toEqual([
         {
           id: 123,
+          owner:
+            "example-org",
+          name: "repo",
           fullName:
             "example-org/repo",
+          defaultBranch: null,
           isPrivate: true,
           permissions: {
             admin: false,
