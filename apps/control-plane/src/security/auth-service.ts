@@ -3,6 +3,7 @@ import type {
   AuthUserRow,
   CreateAuthSessionInput,
   CreateOAuthStateInput,
+  UpdateGitHubUserCredentialsInput,
   UpsertGitHubUserInput
 } from "@contribos/db";
 
@@ -11,6 +12,7 @@ import type {
   ResolvedAuthContext
 } from "./auth-types.js";
 import {
+  decryptCredential,
   encryptCredential
 } from "./credential-cipher.js";
 import type {
@@ -36,9 +38,18 @@ import {
   hashSessionToken
 } from "./session-token.js";
 
+const SESSION_TOUCH_INTERVAL_MS =
+  5 * 60 * 1000;
+
 export interface AuthUserStore {
   upsertGitHubUser(
     input: UpsertGitHubUserInput
+  ): Promise<AuthUserRow>;
+
+  updateGitHubCredentials?(
+    id: string,
+    input:
+      UpdateGitHubUserCredentialsInput
   ): Promise<AuthUserRow>;
 }
 
@@ -59,6 +70,11 @@ export interface AuthSessionStore {
     tokenHash: string,
     now?: Date
   ): Promise<boolean>;
+
+  touch?(
+    id: string,
+    now?: Date
+  ): Promise<void>;
 }
 
 export interface OAuthStateStore {
@@ -129,6 +145,21 @@ function encryptedUserInput(
   };
 }
 
+function refreshTokenUsable(
+  user: AuthUserRow,
+  now: Date
+): boolean {
+  if (!user.githubRefreshTokenCiphertext) {
+    return false;
+  }
+
+  return (
+    !user.githubRefreshTokenExpiresAt ||
+    user.githubRefreshTokenExpiresAt
+      .getTime() > now.getTime()
+  );
+}
+
 export class AuthService {
   constructor(
     private readonly options:
@@ -138,8 +169,7 @@ export class AuthService {
   async beginLogin(
     now = new Date()
   ): Promise<BeginLoginResult> {
-    const state =
-      createOAuthState();
+    const state = createOAuthState();
 
     await this.options.oauthStates.create({
       stateHash:
@@ -268,6 +298,85 @@ export class AuthService {
     };
   }
 
+  private async refreshUserCredential(
+    user: AuthUserRow,
+    now: Date
+  ): Promise<AuthUserRow> {
+    const expiresAt =
+      user.githubAccessTokenExpiresAt;
+
+    if (
+      !expiresAt ||
+      expiresAt.getTime() >
+        now.getTime()
+    ) {
+      return user;
+    }
+
+    if (
+      !refreshTokenUsable(user, now) ||
+      !this.options.users
+        .updateGitHubCredentials
+    ) {
+      return user;
+    }
+
+    try {
+      const refreshToken =
+        decryptCredential(
+          user.githubRefreshTokenCiphertext!,
+          this.options
+            .credentialEncryptionKey
+        );
+
+      const refreshed =
+        await this.options.oauth
+          .refreshAccessToken(
+            refreshToken,
+            now
+          );
+
+      const nextRefreshCiphertext =
+        refreshed.refreshToken
+          ? encryptCredential(
+              refreshed.refreshToken,
+              this.options
+                .credentialEncryptionKey
+            )
+          : user
+              .githubRefreshTokenCiphertext;
+
+      const nextRefreshExpiresAt =
+        refreshed.refreshToken
+          ? refreshed
+              .refreshTokenExpiresAt
+          : user
+              .githubRefreshTokenExpiresAt;
+
+      return await this.options.users
+        .updateGitHubCredentials(
+          user.id,
+          {
+            githubAccessTokenCiphertext:
+              encryptCredential(
+                refreshed.accessToken,
+                this.options
+                  .credentialEncryptionKey
+              ),
+            githubAccessTokenExpiresAt:
+              refreshed
+                .accessTokenExpiresAt,
+            githubRefreshTokenCiphertext:
+              nextRefreshCiphertext,
+            githubRefreshTokenExpiresAt:
+              nextRefreshExpiresAt
+          }
+        );
+    } catch {
+      return user;
+    }
+  }
+
   async resolveSessionContext(
     rawToken: string,
     now = new Date()
@@ -285,23 +394,40 @@ export class AuthService {
       return null;
     }
 
+    const user =
+      await this.refreshUserCredential(
+        active.user,
+        now
+      );
+
+    if (
+      this.options.sessions.touch &&
+      now.getTime() -
+        active.session.lastSeenAt
+          .getTime() >=
+        SESSION_TOUCH_INTERVAL_MS
+    ) {
+      await this.options.sessions.touch(
+        active.session.id,
+        now
+      );
+    }
+
     return {
       sessionId:
         active.session.id,
-      userId:
-        active.user.id,
+      userId: user.id,
       principal: {
         provider: "GITHUB",
         providerUserId:
-          active.user.providerUserId,
-        login:
-          active.user.login
+          user.providerUserId,
+        login: user.login
       },
       githubAccessTokenCiphertext:
-        active.user
+        user
           .githubAccessTokenCiphertext,
       githubAccessTokenExpiresAt:
-        active.user
+        user
           .githubAccessTokenExpiresAt
     };
   }
@@ -318,9 +444,7 @@ export class AuthService {
         now
       );
 
-    return (
-      context?.principal ?? null
-    );
+    return context?.principal ?? null;
   }
 
   async signOut(

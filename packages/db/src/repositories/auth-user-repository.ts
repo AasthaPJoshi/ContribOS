@@ -29,6 +29,13 @@ export interface UpsertGitHubUserInput {
     Date | null;
 }
 
+export interface UpdateGitHubUserCredentialsInput {
+  githubAccessTokenCiphertext: string;
+  githubAccessTokenExpiresAt: Date | null;
+  githubRefreshTokenCiphertext: string | null;
+  githubRefreshTokenExpiresAt: Date | null;
+}
+
 export class AuthUserRepository {
   constructor(
     private readonly db:
@@ -85,6 +92,37 @@ export class AuthUserRepository {
     if (!user) {
       throw new Error(
         "AUTH_USER_UPSERT_FAILED"
+      );
+    }
+
+    return user;
+  }
+
+  async updateGitHubCredentials(
+    id: string,
+    input: UpdateGitHubUserCredentialsInput
+  ): Promise<AuthUserRow> {
+    const rows = await this.db
+      .update(authUsers)
+      .set({
+        githubAccessTokenCiphertext:
+          input.githubAccessTokenCiphertext,
+        githubAccessTokenExpiresAt:
+          input.githubAccessTokenExpiresAt,
+        githubRefreshTokenCiphertext:
+          input.githubRefreshTokenCiphertext,
+        githubRefreshTokenExpiresAt:
+          input.githubRefreshTokenExpiresAt,
+        updatedAt: new Date()
+      })
+      .where(eq(authUsers.id, id))
+      .returning();
+
+    const user = rows[0];
+
+    if (!user) {
+      throw new Error(
+        "AUTH_USER_CREDENTIAL_UPDATE_FAILED"
       );
     }
 

@@ -1,5 +1,7 @@
+export * from "./health.js";
 export * from "./schema.js";
 export * from "./database.js";
+export * from "./migrations.js";
 
 export * from "./repositories/installation-repository.js";
 export * from "./repositories/repository-repository.js";

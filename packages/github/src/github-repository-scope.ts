@@ -16,5 +16,9 @@ export function isRepositoryAuthorizedByToken(
     return false;
   }
 
-  return token.repositoryIds?.includes(repositoryId) ?? false;
+  if (token.repositoryIds === null) {
+    return true;
+  }
+
+  return token.repositoryIds.includes(repositoryId);
 }

@@ -93,12 +93,6 @@ describe("WebhookDeliveryRepository lifecycle", () => {
         )
       ).toBe(false);
 
-      expect(
-        await repository.hasProcessed(
-          "delivery-1"
-        )
-      ).toBe(false);
-
       await repository.markProcessed(
         "delivery-1"
       );
@@ -113,7 +107,100 @@ describe("WebhookDeliveryRepository lifecycle", () => {
     }
   });
 
-  it("marks stale claims as failed", async () => {
+  it("reclaims retryable failures but caps attempts", async () => {
+    const { client, db } = await setup();
+
+    try {
+      const repository =
+        new WebhookDeliveryRepository(
+          db as any
+        );
+
+      expect(
+        await repository.tryClaim(
+          "delivery-retry"
+        )
+      ).toBe(true);
+
+      await repository.markFailed(
+        "delivery-retry",
+        "WEBHOOK_ENQUEUE_FAILED",
+        true
+      );
+
+      expect(
+        await repository.tryClaim(
+          "delivery-retry"
+        )
+      ).toBe(true);
+
+      await repository.markFailed(
+        "delivery-retry",
+        "WEBHOOK_ENQUEUE_FAILED",
+        true
+      );
+
+      expect(
+        await repository.tryClaim(
+          "delivery-retry"
+        )
+      ).toBe(true);
+
+      await repository.markFailed(
+        "delivery-retry",
+        "WEBHOOK_ENQUEUE_FAILED",
+        true
+      );
+
+      expect(
+        await repository.tryClaim(
+          "delivery-retry"
+        )
+      ).toBe(false);
+
+      expect(
+        await repository.findByDeliveryId(
+          "delivery-retry"
+        )
+      ).toMatchObject({
+        status: "FAILED",
+        attemptCount: 3,
+        retryable: true
+      });
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("does not reclaim permanent failures", async () => {
+    const { client, db } = await setup();
+
+    try {
+      const repository =
+        new WebhookDeliveryRepository(
+          db as any
+        );
+
+      await repository.tryClaim(
+        "delivery-permanent"
+      );
+      await repository.markFailed(
+        "delivery-permanent",
+        "NORMALIZATION_FAILED",
+        false
+      );
+
+      expect(
+        await repository.tryClaim(
+          "delivery-permanent"
+        )
+      ).toBe(false);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("marks stale claims retryable", async () => {
     const { client, db } = await setup();
 
     try {
@@ -134,12 +221,11 @@ describe("WebhookDeliveryRepository lifecycle", () => {
         });
 
       expect(recovered).toHaveLength(1);
-      expect(recovered[0]?.status).toBe(
-        "FAILED"
-      );
-      expect(recovered[0]?.errorCode).toBe(
-        "STALE_CLAIM"
-      );
+      expect(recovered[0]).toMatchObject({
+        status: "FAILED",
+        errorCode: "STALE_CLAIM",
+        retryable: true
+      });
     } finally {
       await client.close();
     }

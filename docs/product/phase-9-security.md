@@ -290,7 +290,7 @@ This structure is server-only and must never be serialized to the browser.
 
 If the persisted GitHub user access token is expired or GitHub rejects it as invalid, repository authorization returns `REAUTHENTICATION_REQUIRED`.
 
-Refresh-token rotation is intentionally deferred to Phase 9 hardening.
+Refresh-token rotation was implemented during Phase 11 production hardening.
 
 ### Performance note
 
@@ -452,9 +452,9 @@ Phase 9 intentionally keeps the following conservative behavior:
 - ContribOS browser sessions are durable, opaque, revocable, and time bounded.
 - Expired or rejected GitHub user access tokens require reauthentication.
 - GitHub refresh tokens are stored encrypted when supplied.
-- Automatic refresh-token rotation is not enabled yet.
+- Automatic GitHub OAuth access-token refresh and refresh-token rotation are enabled when GitHub supplies a usable refresh token.
 
-Automatic token refresh is deferred because it requires atomic replacement of access and refresh credentials, failure recovery, and concurrency control around simultaneous refresh attempts. Reauthentication is the fail-closed behavior for this phase.
+Phase 11 added encrypted access/refresh credential replacement during session resolution. If refresh material is unavailable or unusable, repository authorization continues to fail closed with reauthentication.
 
 ### Deployment boundary
 

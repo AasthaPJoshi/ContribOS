@@ -127,5 +127,47 @@ describe(
           "https://example/avatar"
       });
     });
+  it("refreshes an expiring GitHub App user access token", async () => {
+    const fetchFn = vi.fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            access_token: "ghu_new",
+            expires_in: 3600,
+            refresh_token: "ghr_new",
+            refresh_token_expires_in: 7200
+          }),
+          {
+            status: 200,
+            headers: {
+              "content-type": "application/json"
+            }
+          }
+        )
+      );
+
+    const client = new GitHubOAuthClient({
+      clientId: "client",
+      clientSecret: "secret",
+      callbackUrl: "http://localhost:3000/auth/github/callback",
+      fetchFn
+    });
+
+    const token = await client.refreshAccessToken(
+      "ghr_old",
+      new Date("2026-09-02T00:00:00Z")
+    );
+
+    expect(token.accessToken).toBe("ghu_new");
+
+    const request = fetchFn.mock.calls[0]?.[1];
+    expect(String(request?.body)).toContain(
+      "grant_type=refresh_token"
+    );
+    expect(String(request?.body)).toContain(
+      "refresh_token=ghr_old"
+    );
+  });
+
   }
 );

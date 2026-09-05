@@ -1,7 +1,9 @@
 import {
-  ingestWebhook,
   normalizeGitHubWebhookEvent,
+  processWebhook,
+  verifyGitHubWebhookSignature,
   type GitHubWebhookEnvelope,
+  type NormalizedGitHubWebhookEvent,
   type WebhookDeliveryStore
 } from "@contribos/github";
 
@@ -31,7 +33,8 @@ export interface WebhookDeliveryLifecycle
 
   markFailed(
     deliveryId: string,
-    errorCode: string
+    errorCode: string,
+    retryable?: boolean
   ): Promise<void>;
 }
 
@@ -82,17 +85,19 @@ function nestedId(
     : null;
 }
 
-function getAction(
-  payload: UnknownRecord | null
-): string | null {
-  const value = payload?.["action"];
-
-  return (
-    typeof value === "string" &&
-    value.trim()
-  )
-    ? value.trim()
-    : null;
+function compactPayload(
+  event: NormalizedGitHubWebhookEvent
+): Record<string, unknown> {
+  return {
+    objectType: event.objectType,
+    objectId: event.objectId,
+    objectUrl: event.objectUrl,
+    contributionNumber:
+      event.contributionNumber,
+    headSha: event.headSha,
+    occurredAt:
+      event.occurredAt.toISOString()
+  };
 }
 
 export class GitHubWebhookService {
@@ -112,7 +117,8 @@ export class GitHubWebhookService {
         statusCode: 400,
         body: {
           status: "REJECTED",
-          reasonCode: "MISSING_DELIVERY_ID"
+          reasonCode:
+            "MISSING_DELIVERY_ID"
         }
       };
     }
@@ -122,8 +128,29 @@ export class GitHubWebhookService {
         statusCode: 400,
         body: {
           status: "REJECTED",
-          reasonCode: "MISSING_EVENT_NAME",
-          deliveryId: input.deliveryId
+          reasonCode:
+            "MISSING_EVENT_NAME",
+          deliveryId:
+            input.deliveryId
+        }
+      };
+    }
+
+    if (
+      !verifyGitHubWebhookSignature(
+        input.rawBody,
+        input.signature,
+        this.secret
+      )
+    ) {
+      return {
+        statusCode: 401,
+        body: {
+          status: "REJECTED",
+          reasonCode:
+            "INVALID_SIGNATURE",
+          deliveryId:
+            input.deliveryId
         }
       };
     }
@@ -131,51 +158,61 @@ export class GitHubWebhookService {
     let payload: unknown;
 
     try {
-      payload = JSON.parse(input.rawBody);
+      payload = JSON.parse(
+        input.rawBody
+      );
     } catch {
       return {
         statusCode: 400,
         body: {
           status: "REJECTED",
           reasonCode: "INVALID_JSON",
-          deliveryId: input.deliveryId
+          deliveryId:
+            input.deliveryId
         }
       };
     }
 
-    const payloadRecord = asRecord(payload);
+    const payloadRecord =
+      asRecord(payload);
 
-    const envelope: GitHubWebhookEnvelope = {
-      deliveryId: input.deliveryId,
-      eventName: input.eventName,
-      installationId:
-        nestedId(payloadRecord, "installation"),
-      repositoryId:
-        nestedId(payloadRecord, "repository"),
-      receivedAt: input.receivedAt ?? new Date(),
-      payload
-    };
+    const envelope:
+      GitHubWebhookEnvelope = {
+        deliveryId:
+          input.deliveryId,
+        eventName:
+          input.eventName,
+        installationId:
+          nestedId(
+            payloadRecord,
+            "installation"
+          ),
+        repositoryId:
+          nestedId(
+            payloadRecord,
+            "repository"
+          ),
+        receivedAt:
+          input.receivedAt ??
+          new Date(),
+        payload
+      };
 
-    const result = await ingestWebhook(
-      {
-        rawBody: input.rawBody,
-        signatureHeader: input.signature,
-        webhookSecret: this.secret,
-        envelope
-      },
-      this.deliveries
-    );
+    const result =
+      await processWebhook(
+        envelope,
+        this.deliveries
+      );
 
     if (result.status === "REJECTED") {
       return {
-        statusCode:
-          result.reasonCode === "INVALID_SIGNATURE"
-            ? 401
-            : 400,
+        statusCode: 400,
         body: {
           status: result.status,
-          reasonCode: result.reasonCode,
-          deliveryId: result.deliveryId
+          reasonCode:
+            result.reasonCode,
+          deliveryId:
+            result.deliveryId
         }
       };
     }
@@ -185,74 +222,117 @@ export class GitHubWebhookService {
         statusCode: 202,
         body: {
           status: result.status,
-          reasonCode: result.reasonCode,
-          deliveryId: result.deliveryId
+          reasonCode:
+            result.reasonCode,
+          deliveryId:
+            result.deliveryId
         }
       };
     }
 
-    await this.deliveries.recordMetadata({
-      deliveryId: envelope.deliveryId,
-      eventName: envelope.eventName,
-      action: getAction(payloadRecord),
-      githubInstallationId:
-        envelope.installationId === null
-          ? null
-          : String(envelope.installationId),
-      githubRepositoryId:
-        envelope.repositoryId === null
-          ? null
-          : String(envelope.repositoryId),
-      payload,
-      receivedAt: envelope.receivedAt
-    });
-
     const normalized =
-      normalizeGitHubWebhookEvent(envelope);
+      normalizeGitHubWebhookEvent(
+        envelope
+      );
 
     if (!normalized) {
+      await this.deliveries
+        .recordMetadata({
+          deliveryId:
+            envelope.deliveryId,
+          eventName:
+            envelope.eventName,
+          githubInstallationId:
+            envelope.installationId ===
+              null
+              ? null
+              : String(
+                  envelope.installationId
+                ),
+          githubRepositoryId:
+            envelope.repositoryId ===
+              null
+              ? null
+              : String(
+                  envelope.repositoryId
+                ),
+          payload: null,
+          receivedAt:
+            envelope.receivedAt
+        });
+
       await this.deliveries.markFailed(
         envelope.deliveryId,
-        "NORMALIZATION_FAILED"
+        "NORMALIZATION_FAILED",
+        false
       );
 
       return {
         statusCode: 422,
         body: {
           status: "FAILED",
-          reasonCode: "NORMALIZATION_FAILED",
-          deliveryId: envelope.deliveryId
+          reasonCode:
+            "NORMALIZATION_FAILED",
+          deliveryId:
+            envelope.deliveryId
         }
       };
     }
 
+    await this.deliveries
+      .recordMetadata({
+        deliveryId:
+          envelope.deliveryId,
+        eventName:
+          envelope.eventName,
+        action: normalized.action,
+        githubInstallationId:
+          String(
+            normalized.installationId
+          ),
+        githubRepositoryId:
+          String(
+            normalized.repositoryId
+          ),
+        payload:
+          compactPayload(normalized),
+        receivedAt:
+          envelope.receivedAt
+      });
+
     try {
       const enqueueResult =
-        await this.webhooks.acceptNormalizedEvent(
-          normalized
-        );
+        await this.webhooks
+          .acceptNormalizedEvent(
+            normalized
+          );
 
-      await this.deliveries.markProcessed(
-        envelope.deliveryId
-      );
+      await this.deliveries
+        .markProcessed(
+          envelope.deliveryId
+        );
 
       return {
         statusCode: 202,
         body: {
           status: enqueueResult,
           reasonCode:
-            enqueueResult === "ENQUEUED"
+            enqueueResult ===
+              "ENQUEUED"
               ? "WORK_ENQUEUED"
-              : enqueueResult === "DUPLICATE"
+              : enqueueResult ===
+                  "DUPLICATE"
                 ? "WORK_ALREADY_QUEUED"
                 : "NO_WORK_REQUIRED",
-          deliveryId: envelope.deliveryId
+          deliveryId:
+            envelope.deliveryId
         }
       };
     } catch (error) {
       await this.deliveries.markFailed(
         envelope.deliveryId,
-        "WEBHOOK_ENQUEUE_FAILED"
+        "WEBHOOK_ENQUEUE_FAILED",
+        true
       );
 
       throw error;

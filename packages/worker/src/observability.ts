@@ -6,9 +6,15 @@ export interface WorkerObserver {
   jobRescheduled?(
     job: WorkerJob,
     nextAttempt: number,
-    availableAt: Date
+    availableAt: Date,
+    errorCode: string,
+    errorMessage: string
   ): void | Promise<void>;
-  jobDead?(job: WorkerJob, errorCode: string): void | Promise<void>;
+  jobDead?(
+    job: WorkerJob,
+    errorCode: string,
+    errorMessage: string
+  ): void | Promise<void>;
   workerIdle?(): void | Promise<void>;
 }
 

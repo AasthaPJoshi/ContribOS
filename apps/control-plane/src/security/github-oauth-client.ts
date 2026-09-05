@@ -78,10 +78,9 @@ export class GitHubOAuthClient {
   authorizationUrl(
     state: string
   ): string {
-    const url =
-      new URL(
-        GITHUB_AUTHORIZE_URL
-      );
+    const url = new URL(
+      GITHUB_AUTHORIZE_URL
+    );
 
     url.searchParams.set(
       "client_id",
@@ -99,38 +98,25 @@ export class GitHubOAuthClient {
     return url.toString();
   }
 
-  async exchangeCode(
-    code: string,
-    now = new Date()
+  private async requestToken(
+    body: URLSearchParams,
+    now: Date
   ): Promise<GitHubOAuthToken> {
-    const body =
-      new URLSearchParams({
-        client_id:
-          this.options.clientId,
-        client_secret:
-          this.options.clientSecret,
-        code,
-        redirect_uri:
-          this.options.callbackUrl
-      });
-
-    const response =
-      await this.fetchFn(
-        GITHUB_TOKEN_URL,
-        {
-          method: "POST",
-          headers: {
-            accept:
-              "application/json",
-            "content-type":
-              "application/x-www-form-urlencoded"
-          },
-          body
-        }
-      );
+    const response = await this.fetchFn(
+      GITHUB_TOKEN_URL,
+      {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "content-type":
+            "application/x-www-form-urlencoded"
+        },
+        body
+      }
+    );
 
     const payload =
-      (await response.json()) as
+      await response.json() as
         TokenResponse;
 
     if (
@@ -162,6 +148,49 @@ export class GitHubOAuthClient {
     };
   }
 
+  async exchangeCode(
+    code: string,
+    now = new Date()
+  ): Promise<GitHubOAuthToken> {
+    return this.requestToken(
+      new URLSearchParams({
+        client_id:
+          this.options.clientId,
+        client_secret:
+          this.options.clientSecret,
+        code,
+        redirect_uri:
+          this.options.callbackUrl
+      }),
+      now
+    );
+  }
+
+  async refreshAccessToken(
+    refreshToken: string,
+    now = new Date()
+  ): Promise<GitHubOAuthToken> {
+    if (!refreshToken.trim()) {
+      throw new Error(
+        "GITHUB_OAUTH_REFRESH_TOKEN_REQUIRED"
+      );
+    }
+
+    return this.requestToken(
+      new URLSearchParams({
+        client_id:
+          this.options.clientId,
+        client_secret:
+          this.options.clientSecret,
+        grant_type:
+          "refresh_token",
+        refresh_token:
+          refreshToken
+      }),
+      now
+    );
+  }
+
   async fetchViewer(
     accessToken: string
   ): Promise<GitHubOAuthViewer> {
@@ -184,7 +213,7 @@ export class GitHubOAuthClient {
       );
 
     const payload =
-      (await response.json()) as
+      await response.json() as
         UserResponse;
 
     if (

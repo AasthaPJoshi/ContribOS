@@ -12,11 +12,17 @@ const MAX_PAGES = 50;
 export interface UserAccessibleInstallation {
   id: number;
   accountLogin: string | null;
+  accountType: string | null;
+  repositorySelection: string | null;
+  permissions: Record<string, string>;
 }
 
 export interface UserAccessibleRepository {
   id: number;
+  owner: string;
+  name: string;
   fullName: string;
+  defaultBranch: string | null;
   isPrivate: boolean;
   permissions:
     GitHubRepositoryPermissions;
@@ -32,7 +38,10 @@ interface InstallationResponse {
     id?: number;
     account?: {
       login?: string;
+      type?: string;
     } | null;
+    repository_selection?: string;
+    permissions?: Record<string, string>;
   }>;
 }
 
@@ -40,8 +49,13 @@ interface RepositoryResponse {
   total_count?: number;
   repositories?: Array<{
     id?: number;
+    name?: string;
     full_name?: string;
+    default_branch?: string;
     private?: boolean;
+    owner?: {
+      login?: string;
+    } | null;
     permissions?:
       GitHubRepositoryPermissions;
   }>;
@@ -150,7 +164,15 @@ export class GitHubUserAccessClient {
           id: installation.id,
           accountLogin:
             installation.account
-              ?.login ?? null
+              ?.login ?? null,
+          accountType:
+            installation.account
+              ?.type ?? null,
+          repositorySelection:
+            installation.repository_selection ??
+            null,
+          permissions:
+            installation.permissions ?? {}
         });
       }
 
@@ -226,10 +248,27 @@ export class GitHubUserAccessClient {
           continue;
         }
 
+        const owner =
+          repository.owner?.login ??
+          repository.full_name.split("/")[0];
+
+        const name =
+          repository.name ??
+          repository.full_name.split("/")[1];
+
+        if (!owner || !name) {
+          continue;
+        }
+
         result.push({
           id: repository.id,
+          owner,
+          name,
           fullName:
             repository.full_name,
+          defaultBranch:
+            repository.default_branch ??
+            null,
           isPrivate:
             repository.private ===
             true,

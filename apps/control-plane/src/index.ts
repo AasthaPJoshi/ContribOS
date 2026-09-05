@@ -18,3 +18,7 @@ export * from "./maintainer-attention-queue.js";
 export * from "./contribution-decision-trail.js";
 export * from "./repository-dashboard.js";
 export * from "./product-http-api.js";
+
+export * from "./security/github-installation-sync-service.js";
+export * from "./request-observability.js";
+export * from "./readiness.js";

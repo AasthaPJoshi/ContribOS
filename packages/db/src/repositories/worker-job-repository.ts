@@ -90,7 +90,9 @@ export class WorkerJobRepository {
     id: string,
     attempt: number,
     availableAt: Date,
-    now: Date
+    now: Date,
+    errorCode?: string,
+    errorMessage?: string
   ): Promise<void> {
     await this.db
       .update(workerJobs)
@@ -99,18 +101,27 @@ export class WorkerJobRepository {
         attempt,
         availableAt,
         claimedAt: null,
+        lastErrorCode: errorCode ?? null,
+        lastErrorMessage: errorMessage ?? null,
         updatedAt: now
       })
       .where(eq(workerJobs.id, id));
   }
 
-  async markDead(id: string, now: Date): Promise<void> {
+  async markDead(
+    id: string,
+    now: Date,
+    errorCode?: string,
+    errorMessage?: string
+  ): Promise<void> {
     await this.db
       .update(workerJobs)
       .set({
         status: "DEAD",
         deadAt: now,
         claimedAt: null,
+        lastErrorCode: errorCode ?? null,
+        lastErrorMessage: errorMessage ?? null,
         updatedAt: now
       })
       .where(eq(workerJobs.id, id));

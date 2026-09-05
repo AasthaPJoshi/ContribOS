@@ -113,7 +113,9 @@ export class InMemoryJobStore
   async reschedule(
     jobId: string,
     nextAttempt: number,
-    availableAt: Date
+    availableAt: Date,
+    _errorCode?: string,
+    _errorMessage?: string
   ): Promise<void> {
     const entry = this.jobs.get(jobId);
 
@@ -128,7 +130,9 @@ export class InMemoryJobStore
   }
 
   async markDead(
-    jobId: string
+    jobId: string,
+    _errorCode?: string,
+    _errorMessage?: string
   ): Promise<void> {
     const entry = this.jobs.get(jobId);
 

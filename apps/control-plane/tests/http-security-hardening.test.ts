@@ -261,6 +261,14 @@ describe(
 
       expect(
         response.headers.get(
+          "content-security-policy"
+        )
+      ).toBe(
+        "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
+      );
+
+      expect(
+        response.headers.get(
           "x-content-type-options"
         )
       ).toBe("nosniff");

@@ -47,6 +47,9 @@ export class ApplicationRuntime {
   readonly loop:
     WorkerLoop;
 
+  private workerPromise:
+    Promise<void> | null = null;
+
   constructor(
     private readonly options:
       ApplicationRuntimeOptions
@@ -92,7 +95,9 @@ export class ApplicationRuntime {
             jobRescheduled: (
               job,
               nextAttempt,
-              availableAt
+              availableAt,
+              errorCode,
+              errorMessage
             ) =>
               options.logger.warn(
                 "worker.job.rescheduled",
@@ -102,19 +107,23 @@ export class ApplicationRuntime {
                   nextAttempt,
                   availableAt:
                     availableAt
-                      .toISOString()
+                      .toISOString(),
+                  errorCode,
+                  errorMessage
                 }
               ),
             jobDead: (
               job,
-              errorCode
+              errorCode,
+              errorMessage
             ) =>
               options.logger.error(
                 "worker.job.dead",
                 {
                   jobId: job.id,
                   type: job.type,
-                  errorCode
+                  errorCode,
+                  errorMessage
                 }
               )
           }
@@ -141,12 +150,51 @@ export class ApplicationRuntime {
     );
   }
 
+  startWorker(): Promise<void> {
+    if (this.workerPromise) {
+      return this.workerPromise;
+    }
+
+    const run = this.loop.run();
+    this.workerPromise = run;
+
+    const clearWorker = () => {
+      if (this.workerPromise === run) {
+        this.workerPromise = null;
+      }
+    };
+
+    void run.then(
+      clearWorker,
+      clearWorker
+    );
+
+    return run;
+  }
+
   requestShutdown(): void {
+    if (
+      this.health.snapshot()
+        .shuttingDown
+    ) {
+      return;
+    }
+
     this.health.beginShutdown();
     this.loop.requestStop();
 
     this.options.logger.info(
       "runtime.shutdown.requested"
     );
+  }
+
+  async stopAndWait(): Promise<void> {
+    this.requestShutdown();
+
+    const worker = this.workerPromise;
+
+    if (worker) {
+      await worker;
+    }
   }
 }

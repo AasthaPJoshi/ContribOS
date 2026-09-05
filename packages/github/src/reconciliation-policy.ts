@@ -5,7 +5,12 @@ export interface RequiredStatusCheck {
   integrationId: number | null;
 }
 
+export type PolicyAvailability =
+  | "AVAILABLE"
+  | "UNAVAILABLE";
+
 export interface PullRequestPolicy {
+  policyAvailability: PolicyAvailability;
   pullRequestRulePresent: boolean;
   requiredApprovingReviewCount: number;
   dismissStaleReviewsOnPush: boolean;
@@ -132,6 +137,7 @@ export function derivePullRequestPolicy(
   }
 
   return {
+    policyAvailability: "AVAILABLE",
     pullRequestRulePresent,
     requiredApprovingReviewCount,
     dismissStaleReviewsOnPush,

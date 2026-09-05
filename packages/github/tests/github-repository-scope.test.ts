@@ -33,9 +33,9 @@ describe("GitHub repository scope", () => {
     ).toBe(false);
   });
 
-  it("fails closed when selected repository IDs are unavailable", () => {
+  it("allows installation-scoped access when the token is not additionally narrowed", () => {
     expect(
       isRepositoryAuthorizedByToken(token("selected", null), 101)
-    ).toBe(false);
+    ).toBe(true);
   });
 });

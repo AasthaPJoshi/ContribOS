@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a reproducible ContribOS defect
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the minimum safe reproduction steps.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: ContribOS version, Node version, database version, and relevant deployment details.
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security check
+      options:
+        - label: I have removed credentials, tokens, private keys, secrets, and sensitive repository data.
+          required: true
