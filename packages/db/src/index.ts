@@ -1,3 +1,4 @@
+export * from "./health.js";
 export * from "./schema.js";
 export * from "./database.js";
 export * from "./migrations.js";

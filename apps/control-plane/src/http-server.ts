@@ -15,6 +15,15 @@ import type {
   RuntimeLogger
 } from "./logger.js";
 import {
+  RequestMetrics,
+  resolveRequestId
+} from "./request-observability.js";
+import {
+  evaluateReadinessChecks,
+  readinessChecksPassed,
+  type ReadinessChecks
+} from "./readiness.js";
+import {
   handleProductHttpRequest,
   type ProductQueryApi
 } from "./product-http-api.js";
@@ -242,11 +251,15 @@ export interface HttpServerOptions {
   repositoryAuthorization:
     RepositoryAuthorizationApi;
   publicOrigin: string;
+  readinessChecks?: ReadinessChecks;
 }
 
 export function createControlPlaneServer(
   options: HttpServerOptions
 ): Server {
+  const requestMetrics =
+    new RequestMetrics();
+
   return createServer(
     async (
       request,
@@ -254,6 +267,89 @@ export function createControlPlaneServer(
     ) => {
       applySecurityHeaders(
         response
+      );
+
+      const requestId =
+        resolveRequestId(
+          header(
+            request,
+            "x-request-id"
+          )
+        );
+      const startedAt =
+        process.hrtime.bigint();
+      const requestPath = (() => {
+        try {
+          return requestUrl(
+            request,
+            options.publicOrigin
+          ).pathname;
+        } catch {
+          return "/invalid-url";
+        }
+      })();
+
+      response.setHeader(
+        "x-request-id",
+        requestId
+      );
+      requestMetrics.begin();
+
+      let requestFinalized = false;
+
+      const finalizeRequest = (
+        statusCode: number
+      ): void => {
+        if (requestFinalized) {
+          return;
+        }
+
+        requestFinalized = true;
+
+        requestMetrics.finish(
+          statusCode
+        );
+
+        const durationMs = Number(
+          process.hrtime.bigint() -
+            startedAt
+        ) / 1_000_000;
+
+        options.logger.info(
+          "http.request.completed",
+          {
+            requestId,
+            method:
+              request.method ??
+              "UNKNOWN",
+            path: requestPath,
+            statusCode,
+            durationMs:
+              Math.round(
+                durationMs * 100
+              ) / 100,
+            metrics:
+              requestMetrics.snapshot()
+          }
+        );
+      };
+
+      response.once(
+        "finish",
+        () => {
+          finalizeRequest(
+            response.statusCode
+          );
+        }
+      );
+
+      response.once(
+        "close",
+        () => {
+          if (!response.writableFinished) {
+            finalizeRequest(499);
+          }
+        }
       );
 
       try {
@@ -282,13 +378,26 @@ export function createControlPlaneServer(
           const snapshot =
             options.health
               .snapshot();
+          const checks =
+            snapshot.ready
+              ? await evaluateReadinessChecks(
+                  options.readinessChecks ?? {}
+                )
+              : {};
+          const ready =
+            snapshot.ready &&
+            readinessChecksPassed(
+              checks
+            );
 
           json(
             response,
-            snapshot.ready
-              ? 200
-              : 503,
-            snapshot
+            ready ? 200 : 503,
+            {
+              ...snapshot,
+              ready,
+              checks
+            }
           );
           return;
         }
@@ -651,6 +760,11 @@ export function createControlPlaneServer(
         options.logger.error(
           "http.request.failed",
           {
+            requestId,
+            method:
+              request.method ??
+              "UNKNOWN",
+            path: requestPath,
             message:
               error instanceof Error
                 ? error.message

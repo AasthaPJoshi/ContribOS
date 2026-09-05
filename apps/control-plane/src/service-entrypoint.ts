@@ -1,4 +1,5 @@
 import {
+  checkDatabaseReady,
   AuthSessionRepository,
   AuthUserRepository,
   OAuthStateRepository,
@@ -148,6 +149,10 @@ const server =
   createControlPlaneServer({
     health:
       handle.runtime.health,
+    readinessChecks: {
+      database: () =>
+        checkDatabaseReady(handle.db)
+    },
     webhook,
     logger,
     productQueries,
