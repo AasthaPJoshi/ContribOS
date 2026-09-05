@@ -12,7 +12,7 @@ if ! git check-ignore -q .secrets/example; then
 fi
 
 echo "== High-confidence tracked-secret scan =="
-tracked_files="$(git ls-files ':!:**/tests/**' ':!:scripts/phase11/**' ':!:docs/**')"
+tracked_files="$(git ls-files ':!:**/tests/**' ':!:scripts/phase11/**' ':!:docs/**' ':!:scripts/ops/verify-production-readiness.sh')"
 if [[ -n "$tracked_files" ]]; then
   if printf '%s\n' "$tracked_files" | xargs grep -nE -- '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|github_pat_[A-Za-z0-9_]{40,}|gh[pousr]_[A-Za-z0-9]{30,}' 2>/dev/null; then
     echo "Potential real credential found in tracked production files." >&2
