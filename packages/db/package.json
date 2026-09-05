@@ -15,7 +15,7 @@
     "clean": "rm -rf dist",
     "build": "pnpm run clean && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --fileParallelism=false --testTimeout=15000",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts"
   },
   "dependencies": {

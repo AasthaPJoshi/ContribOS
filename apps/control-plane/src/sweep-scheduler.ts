@@ -1,6 +1,7 @@
 import {
   InstallationRepository,
-  type ContribOSDatabase
+  type ContribOSDatabase,
+  type InstallationRow
 } from "@contribos/db";
 
 import type {
@@ -10,14 +11,20 @@ import type {
   ReconciliationSweepProducer
 } from "./sweep-producer.js";
 
+export interface InstallationListStore {
+  listAll(): Promise<InstallationRow[]>;
+}
+
 export interface SweepSchedulerOptions {
   intervalMs: number;
+  installations?: InstallationListStore;
 }
 
 export class SweepScheduler {
   private timer: NodeJS.Timeout | null = null;
+  private activeRun: Promise<number> | null = null;
   private readonly installations:
-    InstallationRepository;
+    InstallationListStore;
 
   constructor(
     db: ContribOSDatabase,
@@ -29,10 +36,11 @@ export class SweepScheduler {
       SweepSchedulerOptions
   ) {
     this.installations =
+      options.installations ??
       new InstallationRepository(db);
   }
 
-  async runOnce(): Promise<number> {
+  private async executeOnce(): Promise<number> {
     const installations =
       await this.installations.listAll();
 
@@ -71,6 +79,31 @@ export class SweepScheduler {
     return enqueued;
   }
 
+  runOnce(): Promise<number> {
+    if (this.activeRun) {
+      this.logger.warn(
+        "sweep.skipped_overlap"
+      );
+      return Promise.resolve(0);
+    }
+
+    const run = this.executeOnce();
+    this.activeRun = run;
+
+    const clearActiveRun = () => {
+      if (this.activeRun === run) {
+        this.activeRun = null;
+      }
+    };
+
+    void run.then(
+      clearActiveRun,
+      clearActiveRun
+    );
+
+    return run;
+  }
+
   start(): void {
     if (this.timer) {
       return;
@@ -101,5 +134,15 @@ export class SweepScheduler {
 
     clearInterval(this.timer);
     this.timer = null;
+  }
+
+  async stopAndWait(): Promise<void> {
+    this.stop();
+
+    const activeRun = this.activeRun;
+
+    if (activeRun) {
+      await activeRun;
+    }
   }
 }

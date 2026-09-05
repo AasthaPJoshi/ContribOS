@@ -5,7 +5,8 @@ import {
   asc,
   eq,
   inArray,
-  lt
+  lt,
+  sql
 } from "drizzle-orm";
 
 import type { WebhookDeliveryStore } from "@contribos/github";
@@ -15,6 +16,8 @@ import {
   webhookDeliveries,
   type WebhookDeliveryRow
 } from "../schema.js";
+
+const MAX_DELIVERY_ATTEMPTS = 3;
 
 export interface RecordWebhookMetadataInput {
   deliveryId: string;
@@ -43,12 +46,14 @@ export class WebhookDeliveryRepository
   ): Promise<boolean> {
     const now = new Date();
 
-    const rows = await this.db
+    const inserted = await this.db
       .insert(webhookDeliveries)
       .values({
         id: randomUUID(),
         deliveryId,
         status: "CLAIMED",
+        attemptCount: 1,
+        retryable: false,
         claimedAt: now,
         createdAt: now,
         updatedAt: now
@@ -60,16 +65,63 @@ export class WebhookDeliveryRepository
         id: webhookDeliveries.id
       });
 
-    return rows.length === 1;
+    if (inserted.length === 1) {
+      return true;
+    }
+
+    const retried = await this.db
+      .update(webhookDeliveries)
+      .set({
+        status: "CLAIMED",
+        attemptCount: sql`${webhookDeliveries.attemptCount} + 1`,
+        retryable: false,
+        claimedAt: now,
+        processedAt: null,
+        errorCode: null,
+        updatedAt: now
+      })
+      .where(
+        and(
+          eq(
+            webhookDeliveries.deliveryId,
+            deliveryId
+          ),
+          eq(
+            webhookDeliveries.status,
+            "FAILED"
+          ),
+          eq(
+            webhookDeliveries.retryable,
+            true
+          ),
+          lt(
+            webhookDeliveries.attemptCount,
+            MAX_DELIVERY_ATTEMPTS
+          )
+        )
+      )
+      .returning({
+        id: webhookDeliveries.id
+      });
+
+    return retried.length === 1;
   }
 
   async hasProcessed(
     deliveryId: string
   ): Promise<boolean> {
+    const row = await this.findByDeliveryId(
+      deliveryId
+    );
+
+    return row?.status === "PROCESSED";
+  }
+
+  async findByDeliveryId(
+    deliveryId: string
+  ): Promise<WebhookDeliveryRow | null> {
     const rows = await this.db
-      .select({
-        status: webhookDeliveries.status
-      })
+      .select()
       .from(webhookDeliveries)
       .where(
         eq(
@@ -79,19 +131,22 @@ export class WebhookDeliveryRepository
       )
       .limit(1);
 
-    return rows[0]?.status === "PROCESSED";
+    return rows[0] ?? null;
   }
 
   async markProcessed(
     deliveryId: string
   ): Promise<void> {
+    const now = new Date();
+
     await this.db
       .update(webhookDeliveries)
       .set({
         status: "PROCESSED",
-        processedAt: new Date(),
+        processedAt: now,
+        retryable: false,
         errorCode: null,
-        updatedAt: new Date()
+        updatedAt: now
       })
       .where(
         eq(
@@ -103,12 +158,14 @@ export class WebhookDeliveryRepository
 
   async markFailed(
     deliveryId: string,
-    errorCode: string
+    errorCode: string,
+    retryable = false
   ): Promise<void> {
     await this.db
       .update(webhookDeliveries)
       .set({
         status: "FAILED",
+        retryable,
         errorCode,
         updatedAt: new Date()
       })
@@ -155,26 +212,25 @@ export class WebhookDeliveryRepository
       );
     }
 
-    const candidates =
-      await this.db
-        .select({ id: webhookDeliveries.id })
-        .from(webhookDeliveries)
-        .where(
-          and(
-            eq(
-              webhookDeliveries.status,
-              "CLAIMED"
-            ),
-            lt(
-              webhookDeliveries.claimedAt,
-              input.staleBefore
-            )
+    const candidates = await this.db
+      .select({ id: webhookDeliveries.id })
+      .from(webhookDeliveries)
+      .where(
+        and(
+          eq(
+            webhookDeliveries.status,
+            "CLAIMED"
+          ),
+          lt(
+            webhookDeliveries.claimedAt,
+            input.staleBefore
           )
         )
-        .orderBy(
-          asc(webhookDeliveries.claimedAt)
-        )
-        .limit(limit);
+      )
+      .orderBy(
+        asc(webhookDeliveries.claimedAt)
+      )
+      .limit(limit);
 
     if (candidates.length === 0) {
       return [];
@@ -184,6 +240,7 @@ export class WebhookDeliveryRepository
       .update(webhookDeliveries)
       .set({
         status: "FAILED",
+        retryable: true,
         errorCode: "STALE_CLAIM",
         updatedAt: new Date()
       })

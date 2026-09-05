@@ -36,6 +36,13 @@
       "when": 1788333501674,
       "tag": "0004_volatile_valeria_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788584927239,
+      "tag": "0005_common_red_ghost",
+      "breakpoints": true
     }
   ]
 }

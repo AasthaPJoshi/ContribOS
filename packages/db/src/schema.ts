@@ -146,6 +146,12 @@ export const webhookDeliveries = pgTable(
     status: text("status")
       .notNull()
       .default("CLAIMED"),
+    attemptCount: integer("attempt_count")
+      .notNull()
+      .default(1),
+    retryable: boolean("retryable")
+      .notNull()
+      .default(false),
     payload: jsonb("payload"),
     receivedAt: timestamp("received_at", {
       withTimezone: true

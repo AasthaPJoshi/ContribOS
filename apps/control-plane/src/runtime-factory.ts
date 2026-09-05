@@ -57,7 +57,7 @@ export function createRuntimeHandle(config: RuntimeFactoryConfig): RuntimeHandle
     runtime,
     db: database.db,
     async close() {
-      runtime.requestShutdown();
+      await runtime.stopAndWait();
       tokenProvider.clear();
       await database.close();
     }

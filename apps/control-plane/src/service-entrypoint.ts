@@ -3,7 +3,8 @@ import {
   AuthUserRepository,
   OAuthStateRepository,
   RepositoryAccessScopeRepository,
-  WebhookDeliveryRepository
+  WebhookDeliveryRepository,
+  runDatabaseMigrations
 } from "@contribos/db";
 
 import {
@@ -186,6 +187,7 @@ async function shutdown(
     }
   );
 
+  await scheduler.stopAndWait();
   await handle.close();
 }
 
@@ -217,40 +219,64 @@ for (
   );
 }
 
-server.listen(
-  config.port,
-  config.host,
-  () => {
-    handle.runtime
-      .markReady();
-    scheduler.start();
+async function start(): Promise<void> {
+  await runDatabaseMigrations(
+    handle.db
+  );
 
-    logger.info(
-      "service.started",
-      {
-        host:
-          config.host,
-        port:
-          config.port
-      }
-    );
+  server.listen(
+    config.port,
+    config.host,
+    () => {
+      handle.runtime
+        .markReady();
+      scheduler.start();
 
-    void handle.runtime
-      .loop.run()
-      .catch((error) => {
-        logger.error(
-          "worker.loop.failed",
-          {
-            message:
-              error instanceof Error
-                ? error.message
-                : "Unknown failure."
-          }
-        );
+      logger.info(
+        "service.started",
+        {
+          host:
+            config.host,
+          port:
+            config.port
+        }
+      );
 
-        void shutdown(
-          "WORKER_LOOP_FAILURE"
-        );
-      });
+      void handle.runtime
+        .startWorker()
+        .catch((error) => {
+          logger.error(
+            "worker.loop.failed",
+            {
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Unknown failure."
+            }
+          );
+
+          void shutdown(
+            "WORKER_LOOP_FAILURE"
+          );
+        });
+    }
+  );
+}
+
+void start().catch(async (error) => {
+  logger.error(
+    "service.startup.failed",
+    {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unknown failure."
+    }
+  );
+
+  try {
+    await handle.close();
+  } finally {
+    process.exitCode = 1;
   }
-);
+});
