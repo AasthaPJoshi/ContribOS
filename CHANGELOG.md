@@ -11,7 +11,7 @@ The project follows semantic versioning once public versioned releases begin.
 - Public open-source release foundation.
 - Contribution, security, conduct, and release documentation.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-09-05
 
 ### Added
 
