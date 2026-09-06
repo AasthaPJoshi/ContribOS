@@ -11,6 +11,12 @@ The project follows semantic versioning once public versioned releases begin.
 - Public open-source release foundation.
 - Contribution, security, conduct, and release documentation.
 
+## [0.1.1] - 2026-09-05
+
+### Fixed
+
+- Build control-plane workspace dependencies before targeted production-readiness tests so release verification succeeds from a clean checkout.
+
 ## [0.1.0] - 2026-09-05
 
 ### Added
