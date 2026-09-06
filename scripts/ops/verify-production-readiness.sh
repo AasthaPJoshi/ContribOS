@@ -59,6 +59,9 @@ if env \
   exit 1
 fi
 
+echo "== Build targeted test dependencies =="
+pnpm turbo run build --filter=@contribos/control-plane
+
 echo "== Targeted security tests =="
 pnpm --filter @contribos/control-plane test -- \
   tests/security-headers.test.ts \
