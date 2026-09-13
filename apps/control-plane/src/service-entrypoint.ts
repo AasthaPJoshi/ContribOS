@@ -3,6 +3,8 @@ import {
   AuthSessionRepository,
   AuthUserRepository,
   OAuthStateRepository,
+  InstallationRepository,
+  RepositoryRepository,
   RepositoryAccessScopeRepository,
   WebhookDeliveryRepository,
   runDatabaseMigrations
@@ -35,6 +37,9 @@ import {
 import {
   GitHubUserAccessClient
 } from "./security/github-user-access-client.js";
+import {
+  GitHubInstallationSyncService
+} from "./security/github-installation-sync-service.js";
 import {
   RepositoryAuthorizationService
 } from "./security/repository-authorization-service.js";
@@ -79,6 +84,23 @@ const productQueries =
     handle.db
   );
 
+const installationSync =
+  new GitHubInstallationSyncService({
+    installations:
+      new InstallationRepository(
+        handle.db
+      ),
+    repositories:
+      new RepositoryRepository(
+        handle.db
+      ),
+    github:
+      new GitHubUserAccessClient(),
+    credentialEncryptionKey:
+      authConfig
+        .credentialEncryptionKey
+  });
+
 const auth =
   new AuthService({
     oauth:
@@ -104,6 +126,7 @@ const auth =
       new OAuthStateRepository(
         handle.db
       ),
+    installationSync,
     credentialEncryptionKey:
       authConfig
         .credentialEncryptionKey,

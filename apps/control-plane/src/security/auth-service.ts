@@ -93,6 +93,15 @@ export interface AuthServiceOptions {
   users: AuthUserStore;
   sessions: AuthSessionStore;
   oauthStates: OAuthStateStore;
+  installationSync?: {
+    sync(
+      subject: {
+        githubAccessTokenCiphertext: string;
+        githubAccessTokenExpiresAt: Date | null;
+      },
+      now?: Date
+    ): Promise<unknown>;
+  };
   credentialEncryptionKey: string;
   secureCookies: boolean;
   sessionTtlSeconds: number;
@@ -255,6 +264,23 @@ export class AuthService {
               .credentialEncryptionKey
           )
         );
+
+    if (this.options.installationSync) {
+      try {
+        await this.options.installationSync.sync(
+          {
+            githubAccessTokenCiphertext:
+              user.githubAccessTokenCiphertext,
+            githubAccessTokenExpiresAt:
+              user.githubAccessTokenExpiresAt
+          },
+          now
+        );
+      } catch {
+        // Best-effort repository sync.
+        // Login should still succeed if GitHub inventory sync fails.
+      }
+    }
 
     const sessionToken =
       createSessionToken();
